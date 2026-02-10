@@ -12,6 +12,9 @@ export default {
         "2xl": "1400px",
       },
     },
+    fontFamily: {
+      sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+    },
     extend: {
       colors: {
         border: "hsl(var(--border))",
@@ -46,6 +49,20 @@ export default {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        exam: {
+          surface: "hsl(var(--exam-surface))",
+          "nav-active": "hsl(var(--exam-nav-active))",
+          "nav-answered": "hsl(var(--exam-nav-answered))",
+          "nav-flagged": "hsl(var(--exam-nav-flagged))",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
