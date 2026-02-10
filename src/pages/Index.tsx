@@ -4,36 +4,94 @@ import { BookOpen, GraduationCap, Shield, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const [token, setToken] = useState("");
   const [name, setName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
 
-  const handleStart = (e: React.FormEvent) => {
+  const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token.trim() || !name.trim()) {
       toast.error("Mohon isi nama dan token ujian");
       return;
     }
-    if (token.trim() === "UJIAN2024") {
-      navigate("/exam", { state: { studentName: name.trim() } });
-    } else {
-      toast.error("Token ujian tidak valid. Hubungi guru/pengawas.");
+
+    setIsLoading(true);
+
+    // Check token in database
+    const { data: exam, error } = await supabase
+      .from("exams")
+      .select("*")
+      .eq("token", token.trim())
+      .eq("is_active", true)
+      .maybeSingle();
+
+    setIsLoading(false);
+
+    if (error || !exam) {
+      toast.error("Token ujian tidak valid atau ujian tidak aktif.");
+      return;
     }
+
+    navigate("/exam", {
+      state: {
+        studentName: name.trim(),
+        examId: exam.id,
+        examTitle: exam.title,
+        examSubject: exam.subject,
+        examDuration: exam.duration,
+      },
+    });
   };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="exam-gradient px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-            <GraduationCap className="h-6 w-6 text-white" />
+        <div className="mx-auto flex max-w-6xl items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+              <GraduationCap className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white">ExamKu</h1>
+              <p className="text-xs text-white/70">Sistem Ujian Online</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-white">ExamKu</h1>
-            <p className="text-xs text-white/70">Sistem Ujian Online</p>
+          <div className="flex items-center gap-2">
+            {user ? (
+              <>
+                {role === "admin" && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => navigate("/admin")}
+                    className="text-white hover:bg-white/20 text-sm"
+                  >
+                    Dashboard Admin
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={signOut}
+                  className="text-white hover:bg-white/20 text-sm"
+                >
+                  Keluar
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/auth")}
+                className="text-white hover:bg-white/20 text-sm"
+              >
+                Masuk / Daftar
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -108,12 +166,9 @@ const Index = () => {
                   className="h-12 font-mono tracking-widest"
                 />
               </div>
-              <Button type="submit" className="h-12 w-full text-base font-semibold exam-gradient border-0">
-                Mulai Ujian
+              <Button type="submit" disabled={isLoading} className="h-12 w-full text-base font-semibold exam-gradient border-0">
+                {isLoading ? "Memeriksa..." : "Mulai Ujian"}
               </Button>
-              <p className="text-center text-xs text-muted-foreground">
-                Token demo: <span className="font-mono font-bold text-primary">UJIAN2024</span>
-              </p>
             </form>
           </div>
         </div>
