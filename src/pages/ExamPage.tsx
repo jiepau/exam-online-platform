@@ -1,8 +1,8 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { mockExam } from "@/data/mockExams";
+import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
 import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
@@ -18,17 +18,63 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+interface DBQuestion {
+  id: string;
+  question_text: string;
+  options: string[];
+  correct_answer: number;
+  sort_order: number;
+}
+
 const ExamPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const studentName = (location.state as any)?.studentName || "Siswa";
+  const state = location.state as {
+    studentName: string;
+    examId: string;
+    examTitle: string;
+    examSubject: string;
+    examDuration: number;
+  } | null;
 
+  const [questions, setQuestions] = useState<DBQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
+  const [loadingQ, setLoadingQ] = useState(true);
 
-  const exam = mockExam;
-  const question = exam.questions[currentIndex];
+  const studentName = state?.studentName || "Siswa";
+  const examTitle = state?.examTitle || "";
+  const examSubject = state?.examSubject || "";
+  const examDuration = state?.examDuration || 60;
+  const question = questions[currentIndex];
+
+  useEffect(() => {
+    if (!state?.examId) {
+      navigate("/");
+      return;
+    }
+    const fetchQuestions = async () => {
+      const { data } = await supabase
+        .from("questions")
+        .select("*")
+        .eq("exam_id", state.examId)
+        .order("sort_order");
+      if (data) {
+        setQuestions(
+          data.map((q: any) => ({
+            id: q.id,
+            question_text: q.question_text,
+            options: q.options as string[],
+            correct_answer: q.correct_answer,
+            sort_order: q.sort_order,
+          }))
+        );
+      }
+      setLoadingQ(false);
+    };
+    fetchQuestions();
+  }, [state, navigate]);
 
   const handleAnswer = (optionIndex: number) => {
     setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }));
@@ -45,24 +91,48 @@ const ExamPage = () => {
 
   const handleSubmit = useCallback(() => {
     let correct = 0;
-    exam.questions.forEach((q, i) => {
-      if (answers[i] === q.correctAnswer) correct++;
+    questions.forEach((q, i) => {
+      if (answers[i] === q.correct_answer) correct++;
     });
     navigate("/result", {
       state: {
         studentName,
-        examTitle: exam.title,
-        total: exam.questions.length,
+        examTitle,
+        total: questions.length,
         correct,
         answers,
-        questions: exam.questions,
+        questions: questions.map((q) => ({
+          id: q.id,
+          text: q.question_text,
+          options: q.options,
+          correctAnswer: q.correct_answer,
+        })),
       },
     });
-  }, [answers, exam, navigate, studentName]);
+  }, [answers, questions, navigate, studentName, examTitle]);
 
   const handleTimeUp = useCallback(() => {
     handleSubmit();
   }, [handleSubmit]);
+
+  if (!state) return null;
+
+  if (loadingQ) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+        Memuat soal ujian...
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center text-muted-foreground gap-4">
+        <p>Belum ada soal untuk ujian ini.</p>
+        <Button onClick={() => navigate("/")} variant="outline">Kembali</Button>
+      </div>
+    );
+  }
 
   const answeredCount = Object.keys(answers).length;
 
@@ -76,12 +146,12 @@ const ExamPage = () => {
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-sm font-bold text-foreground">{exam.title}</h1>
-              <p className="text-xs text-muted-foreground">{studentName} • {exam.subject}</p>
+              <h1 className="text-sm font-bold text-foreground">{examTitle}</h1>
+              <p className="text-xs text-muted-foreground">{studentName} • {examSubject}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <ExamTimer duration={exam.duration} onTimeUp={handleTimeUp} />
+            <ExamTimer duration={examDuration} onTimeUp={handleTimeUp} />
           </div>
         </div>
       </header>
@@ -93,8 +163,8 @@ const ExamPage = () => {
           <div>
             <QuestionCard
               questionNumber={currentIndex + 1}
-              totalQuestions={exam.questions.length}
-              text={question.text}
+              totalQuestions={questions.length}
+              text={question.question_text}
               options={question.options}
               selectedAnswer={answers[currentIndex]}
               isFlagged={flagged.has(currentIndex)}
@@ -113,9 +183,9 @@ const ExamPage = () => {
                 <ChevronLeft className="h-4 w-4" /> Sebelumnya
               </Button>
 
-              {currentIndex < exam.questions.length - 1 ? (
+              {currentIndex < questions.length - 1 ? (
                 <Button
-                  onClick={() => setCurrentIndex((p) => Math.min(exam.questions.length - 1, p + 1))}
+                  onClick={() => setCurrentIndex((p) => Math.min(questions.length - 1, p + 1))}
                   className="gap-2 exam-gradient border-0"
                 >
                   Selanjutnya <ChevronRight className="h-4 w-4" />
@@ -131,10 +201,10 @@ const ExamPage = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Kumpulkan Jawaban?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Anda telah menjawab {answeredCount} dari {exam.questions.length} soal.
-                        {answeredCount < exam.questions.length && (
+                        Anda telah menjawab {answeredCount} dari {questions.length} soal.
+                        {answeredCount < questions.length && (
                           <span className="mt-1 block font-medium text-warning">
-                            ⚠️ Masih ada {exam.questions.length - answeredCount} soal belum dijawab!
+                            ⚠️ Masih ada {questions.length - answeredCount} soal belum dijawab!
                           </span>
                         )}
                         Setelah dikumpulkan, jawaban tidak dapat diubah.
@@ -156,7 +226,7 @@ const ExamPage = () => {
           <div className="hidden lg:block">
             <div className="sticky top-20">
               <QuestionNav
-                total={exam.questions.length}
+                total={questions.length}
                 current={currentIndex}
                 answers={answers}
                 flagged={flagged}
@@ -174,10 +244,10 @@ const ExamPage = () => {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Kumpulkan Jawaban?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Anda telah menjawab {answeredCount} dari {exam.questions.length} soal.
-                        {answeredCount < exam.questions.length && (
+                        Anda telah menjawab {answeredCount} dari {questions.length} soal.
+                        {answeredCount < questions.length && (
                           <span className="mt-1 block font-medium text-warning">
-                            ⚠️ Masih ada {exam.questions.length - answeredCount} soal belum dijawab!
+                            ⚠️ Masih ada {questions.length - answeredCount} soal belum dijawab!
                           </span>
                         )}
                       </AlertDialogDescription>
