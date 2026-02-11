@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { GraduationCap, LayoutDashboard, FileText, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -25,11 +26,9 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
       <header className="exam-gradient px-6 py-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              <GraduationCap className="h-5 w-5 text-white" />
-            </div>
+            <img src={logoMadrasah} alt="Logo" className="h-9 w-9 object-contain" />
             <div>
-              <h1 className="text-base font-bold text-white">ExamKu Admin</h1>
+              <h1 className="text-base font-bold text-white">MTS Al Wathoniyah 43</h1>
               <p className="text-xs text-white/70">{profile?.full_name || "Guru"}</p>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const Index = () => {
   const [token, setToken] = useState("");
@@ -55,11 +56,9 @@ const Index = () => {
       <header className="exam-gradient px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-              <GraduationCap className="h-6 w-6 text-white" />
-            </div>
+            <img src={logoMadrasah} alt="Logo MTS Al Wathoniyah 43" className="h-10 w-10 object-contain" />
             <div>
-              <h1 className="text-lg font-bold text-white">ExamKu</h1>
+              <h1 className="text-lg font-bold text-white">MTS Al Wathoniyah 43</h1>
               <p className="text-xs text-white/70">Sistem Ujian Online</p>
             </div>
           </div>
@@ -134,9 +133,7 @@ const Index = () => {
           {/* Right - Login Form */}
           <div className="rounded-2xl bg-card p-8 shadow-xl border border-border">
             <div className="mb-6 text-center">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl exam-gradient">
-                <GraduationCap className="h-7 w-7 text-white" />
-              </div>
+              <img src={logoMadrasah} alt="Logo MTS Al Wathoniyah 43" className="mx-auto mb-3 h-16 w-16 object-contain" />
               <h3 className="text-xl font-bold text-foreground">Masuk Ujian</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Masukkan nama dan token dari pengawas
