@@ -18,13 +18,22 @@ const StudentResults = () => {
 
   useEffect(() => {
     const fetchResults = async () => {
-      // Fetch sessions with exam and profile info
+      // Fetch sessions with exam info
       const { data: sessions } = await supabase
         .from("exam_sessions")
-        .select("*, exams(title), profiles!exam_sessions_student_id_fkey(full_name)")
+        .select("*, exams(title)")
         .order("started_at", { ascending: false });
 
       if (sessions) {
+        // Fetch profiles for all student IDs
+        const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", studentIds);
+
+        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.full_name]));
+
         setResults(
           sessions.map((s: any) => ({
             id: s.id,
@@ -34,7 +43,7 @@ const StudentResults = () => {
             started_at: s.started_at,
             finished_at: s.finished_at,
             exam_title: s.exams?.title || "Unknown",
-            student_name: s.profiles?.full_name || "Unknown",
+            student_name: profileMap.get(s.student_id) || "Unknown",
           }))
         );
       }
