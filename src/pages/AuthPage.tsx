@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { GraduationCap, LogIn, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { toast } from "sonner";
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { signIn, signUp } = useAuth();
+  const { user, role, signIn, signUp } = useAuth();
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -18,6 +18,15 @@ const AuthPage = () => {
   const [regName, setRegName] = useState("");
   const [regRole] = useState<"admin" | "student">("admin");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Auto-redirect after login
+  useEffect(() => {
+    if (user && role === "admin") {
+      navigate("/admin", { replace: true });
+    } else if (user && role === "student") {
+      navigate("/", { replace: true });
+    }
+  }, [user, role, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

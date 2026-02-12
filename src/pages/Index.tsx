@@ -10,19 +10,33 @@ import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const Index = () => {
   const [token, setToken] = useState("");
-  const [name, setName] = useState("");
+  const [nisn, setNisn] = useState("");
+  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token.trim() || !name.trim()) {
-      toast.error("Mohon isi nama dan token ujian");
+    if (!token.trim() || !nisn.trim() || !password.trim()) {
+      toast.error("Mohon isi NISN, password, dan token ujian");
       return;
     }
 
     setIsLoading(true);
+
+    // Login student with NISN
+    const email = `${nisn.trim()}@student.mts43.local`;
+    const { error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password: password.trim(),
+    });
+
+    if (loginError) {
+      setIsLoading(false);
+      toast.error("NISN atau password salah");
+      return;
+    }
 
     // Check token in database
     const { data: exam, error } = await supabase
@@ -39,9 +53,16 @@ const Index = () => {
       return;
     }
 
+    // Get student name from profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("nisn", nisn.trim())
+      .maybeSingle();
+
     navigate("/exam", {
       state: {
-        studentName: name.trim(),
+        studentName: profile?.full_name || nisn.trim(),
         examId: exam.id,
         examTitle: exam.title,
         examSubject: exam.subject,
@@ -88,7 +109,7 @@ const Index = () => {
                 onClick={() => navigate("/auth")}
                 className="text-white hover:bg-white/20 text-sm"
               >
-                Masuk / Daftar
+                Login Guru
               </Button>
             )}
           </div>
@@ -136,19 +157,31 @@ const Index = () => {
               <img src={logoMadrasah} alt="Logo MTS Al Wathoniyah 43" className="mx-auto mb-3 h-16 w-16 object-contain" />
               <h3 className="text-xl font-bold text-foreground">Masuk Ujian</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Masukkan nama dan token dari pengawas
+                Masukkan NISN, password, dan token ujian
               </p>
             </div>
 
             <form onSubmit={handleStart} className="space-y-4">
               <div>
                 <label className="mb-1.5 block text-sm font-medium text-foreground">
-                  Nama Lengkap
+                  NISN
                 </label>
                 <Input
-                  placeholder="Masukkan nama lengkap"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Masukkan NISN"
+                  value={nisn}
+                  onChange={(e) => setNisn(e.target.value)}
+                  className="h-12 font-mono tracking-wider"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                  Password
+                </label>
+                <Input
+                  type="password"
+                  placeholder="Masukkan password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="h-12"
                 />
               </div>
