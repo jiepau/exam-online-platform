@@ -1,4 +1,5 @@
 import { Flag } from "lucide-react";
+import MathText from "./MathText";
 
 interface QuestionCardProps {
   questionNumber: number;
@@ -41,7 +42,7 @@ const QuestionCard = ({
       </div>
 
       <div className="mb-6 whitespace-pre-line text-base leading-relaxed text-foreground">
-        {text}
+        <MathText text={text} />
       </div>
 
       <div className="space-y-3">
@@ -67,7 +68,7 @@ const QuestionCard = ({
               >
                 {letter}
               </span>
-              <span className="pt-1 text-sm leading-relaxed">{option}</span>
+              <span className="pt-1 text-sm leading-relaxed"><MathText text={option} /></span>
             </button>
           );
         })}

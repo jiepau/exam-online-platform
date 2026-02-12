@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -11,9 +11,9 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import MathText from "@/components/exam/MathText";
 
 interface Exam {
   id: string;
@@ -43,6 +43,7 @@ const ExamManager = () => {
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchExams = async () => {
     const { data } = await supabase.from("exams").select("*").order("created_at", { ascending: false });
@@ -167,11 +168,58 @@ const ExamManager = () => {
     setQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleImportQuestions = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target?.result as string);
+        if (!Array.isArray(data)) {
+          toast.error("Format file tidak valid. Harus berupa array JSON.");
+          return;
+        }
+        const imported: QuestionForm[] = data.map((item: any) => ({
+          question_text: item.question_text || item.soal || "",
+          options: item.options || item.pilihan || ["", "", "", ""],
+          correct_answer: item.correct_answer ?? item.jawaban ?? 0,
+        }));
+        setQuestions((prev) => [...prev, ...imported]);
+        toast.success(`${imported.length} soal berhasil diimport`);
+      } catch {
+        toast.error("File JSON tidak valid");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+
+  const downloadTemplate = () => {
+    const template = [
+      {
+        question_text: "Berapakah hasil dari $2x + 3 = 7$, nilai $x$ adalah...",
+        options: ["1", "2", "3", "4"],
+        correct_answer: 1,
+      },
+      {
+        question_text: "اختر الترجمة الصحيحة لكلمة 'كتاب'",
+        options: ["Buku", "Pena", "Meja", "Kursi"],
+        correct_answer: 0,
+      },
+    ];
+    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "template-soal.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSaveQuestions = async () => {
     if (!questionsDialog) return;
     setLoading(true);
 
-    // Delete existing and re-insert
     await supabase.from("questions").delete().eq("exam_id", questionsDialog);
 
     const toInsert = questions.map((q, i) => ({
@@ -254,6 +302,24 @@ const ExamManager = () => {
           <DialogHeader>
             <DialogTitle>Kelola Soal</DialogTitle>
           </DialogHeader>
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
+              <Upload className="h-4 w-4" /> Import Soal (JSON)
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
+              <Download className="h-4 w-4" /> Download Template
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleImportQuestions}
+              className="hidden"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            💡 Gunakan <code className="bg-muted px-1 rounded">$...$</code> untuk rumus matematika inline, <code className="bg-muted px-1 rounded">$$...$$</code> untuk block. Teks Arab otomatis RTL.
+          </p>
           <div className="space-y-6">
             {questions.map((q, qi) => (
               <div key={qi} className="rounded-xl border border-border p-4 space-y-3">
@@ -264,11 +330,17 @@ const ExamManager = () => {
                   </Button>
                 </div>
                 <Textarea
-                  placeholder="Tulis pertanyaan..."
+                  placeholder="Tulis pertanyaan... (gunakan $rumus$ untuk matematika)"
                   value={q.question_text}
                   onChange={(e) => updateQuestion(qi, "question_text", e.target.value)}
                   rows={3}
                 />
+                {q.question_text && (
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm">
+                    <span className="text-xs text-muted-foreground mb-1 block">Preview:</span>
+                    <MathText text={q.question_text} />
+                  </div>
+                )}
                 <div className="space-y-2">
                   {q.options.map((opt, oi) => (
                     <div key={oi} className="flex items-center gap-2">
