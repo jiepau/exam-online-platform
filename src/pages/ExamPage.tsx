@@ -25,6 +25,7 @@ interface DBQuestion {
   options: string[];
   correct_answer: number;
   sort_order: number;
+  image_url?: string;
 }
 
 const ExamPage = () => {
@@ -70,6 +71,7 @@ const ExamPage = () => {
             options: q.options as string[],
             correct_answer: q.correct_answer,
             sort_order: q.sort_order,
+            image_url: q.image_url || undefined,
           }))
         );
       }
@@ -223,6 +225,7 @@ const ExamPage = () => {
               questionNumber={currentIndex + 1}
               totalQuestions={questions.length}
               text={question.question_text}
+              imageUrl={question.image_url}
               options={question.options}
               selectedAnswer={answers[currentIndex]}
               isFlagged={flagged.has(currentIndex)}

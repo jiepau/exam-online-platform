@@ -1,1 +1,4 @@
 project_id = "wcmahtzeaziqjmswqmcd"
+
+[functions.register-student]
+verify_jwt = false
