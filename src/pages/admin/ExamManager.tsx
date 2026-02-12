@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, Download, FileText } from "lucide-react";
+import mammoth from "mammoth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -168,15 +169,56 @@ const ExamManager = () => {
     setQuestions((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleImportQuestions = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const parseWordText = (text: string): QuestionForm[] => {
+    const questions: QuestionForm[] = [];
+    // Split by question numbers: 1. or 1) 
+    const qBlocks = text.split(/(?=^\d+[.)]\s)/m).filter((b) => b.trim());
+
+    for (const block of qBlocks) {
+      const lines = block.trim().split("\n").filter((l) => l.trim());
+      if (lines.length < 2) continue;
+
+      // First line is question (remove number prefix)
+      const questionText = lines[0].replace(/^\d+[.)]\s*/, "").trim();
+
+      const options: string[] = [];
+      let correctAnswer = 0;
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        // Match A. B. C. D. or A) B) C) D) patterns
+        const optMatch = line.match(/^([A-Da-d])[.)]\s*(.*)/);
+        if (optMatch) {
+          let optText = optMatch[2].trim();
+          // Check if marked as correct with * at end or start
+          if (optText.endsWith("*") || optText.startsWith("*")) {
+            correctAnswer = options.length;
+            optText = optText.replace(/\*/g, "").trim();
+          }
+          options.push(optText);
+        }
+      }
+
+      if (options.length >= 2) {
+        // Pad to 4 options if needed
+        while (options.length < 4) options.push("");
+        questions.push({ question_text: questionText, options: options.slice(0, 4), correct_answer: correctAnswer });
+      }
+    }
+    return questions;
+  };
+
+  const handleImportQuestions = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string);
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    try {
+      if (ext === "json") {
+        const text = await file.text();
+        const data = JSON.parse(text);
         if (!Array.isArray(data)) {
-          toast.error("Format file tidak valid. Harus berupa array JSON.");
+          toast.error("Format JSON tidak valid.");
           return;
         }
         const imported: QuestionForm[] = data.map((item: any) => ({
@@ -186,32 +228,67 @@ const ExamManager = () => {
         }));
         setQuestions((prev) => [...prev, ...imported]);
         toast.success(`${imported.length} soal berhasil diimport`);
-      } catch {
-        toast.error("File JSON tidak valid");
+      } else if (ext === "docx") {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        const imported = parseWordText(result.value);
+        if (imported.length === 0) {
+          toast.error("Tidak ada soal yang terdeteksi. Pastikan format sesuai template.");
+          return;
+        }
+        setQuestions((prev) => [...prev, ...imported]);
+        toast.success(`${imported.length} soal berhasil diimport dari Word`);
+      } else {
+        toast.error("Format file tidak didukung. Gunakan .docx atau .json");
       }
-    };
-    reader.readAsText(file);
+    } catch {
+      toast.error("Gagal membaca file. Periksa format file Anda.");
+    }
     e.target.value = "";
   };
 
   const downloadTemplate = () => {
-    const template = [
-      {
-        question_text: "Berapakah hasil dari $2x + 3 = 7$, nilai $x$ adalah...",
-        options: ["1", "2", "3", "4"],
-        correct_answer: 1,
-      },
-      {
-        question_text: "اختر الترجمة الصحيحة لكلمة 'كتاب'",
-        options: ["Buku", "Pena", "Meja", "Kursi"],
-        correct_answer: 0,
-      },
-    ];
-    const blob = new Blob([JSON.stringify(template, null, 2)], { type: "application/json" });
+    const templateText = `TEMPLATE SOAL UJIAN - MTS Al Wathoniyah 43
+================================================
+
+PETUNJUK PENGISIAN:
+- Setiap soal diawali dengan nomor (1. 2. 3. dst)
+- Pilihan jawaban ditulis dengan huruf (A. B. C. D.)
+- Tandai jawaban benar dengan tanda bintang (*) di akhir pilihan
+- Untuk rumus matematika, gunakan format: $rumus$
+- Teks Bahasa Arab bisa langsung ditulis
+
+================================================
+
+1. Berapakah hasil dari 2x + 3 = 7, maka nilai x adalah...
+A. 1
+B. 2*
+C. 3
+D. 4
+
+2. Hasil dari 15 x 8 adalah...
+A. 100
+B. 110
+C. 120*
+D. 130
+
+3. اختر الترجمة الصحيحة لكلمة "كتاب"
+A. Buku*
+B. Pena
+C. Meja
+D. Kursi
+
+4. Apa arti dari kata "مَدْرَسَةٌ"?
+A. Rumah
+B. Masjid
+C. Sekolah*
+D. Pasar
+`;
+    const blob = new Blob([templateText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "template-soal.json";
+    a.download = "template-soal.txt";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -304,21 +381,21 @@ const ExamManager = () => {
           </DialogHeader>
           <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
-              <Upload className="h-4 w-4" /> Import Soal (JSON)
+              <Upload className="h-4 w-4" /> Import Soal
             </Button>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
-              <Download className="h-4 w-4" /> Download Template
+              <FileText className="h-4 w-4" /> Download Template
             </Button>
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".docx,.json"
               onChange={handleImportQuestions}
               className="hidden"
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            💡 Gunakan <code className="bg-muted px-1 rounded">$...$</code> untuk rumus matematika inline, <code className="bg-muted px-1 rounded">$$...$$</code> untuk block. Teks Arab otomatis RTL.
+            📄 Support format: <strong>Word (.docx)</strong> dan JSON. Download template untuk contoh format. Tandai jawaban benar dengan tanda <strong>*</strong>
           </p>
           <div className="space-y-6">
             {questions.map((q, qi) => (
