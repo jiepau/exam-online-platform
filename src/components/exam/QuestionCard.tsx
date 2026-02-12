@@ -5,6 +5,7 @@ interface QuestionCardProps {
   questionNumber: number;
   totalQuestions: number;
   text: string;
+  imageUrl?: string;
   options: string[];
   selectedAnswer?: number;
   isFlagged: boolean;
@@ -16,6 +17,7 @@ const QuestionCard = ({
   questionNumber,
   totalQuestions,
   text,
+  imageUrl,
   options,
   selectedAnswer,
   isFlagged,
@@ -43,6 +45,9 @@ const QuestionCard = ({
 
       <div className="mb-6 whitespace-pre-line text-base leading-relaxed text-foreground">
         <MathText text={text} />
+        {imageUrl && (
+          <img src={imageUrl} alt="Gambar soal" className="mt-3 max-h-64 rounded-lg border border-border object-contain" />
+        )}
       </div>
 
       <div className="space-y-3">

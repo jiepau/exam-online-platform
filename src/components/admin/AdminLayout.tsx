@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import logoMadrasah from "@/assets/logo-madrasah.png";
@@ -9,6 +9,7 @@ const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/exams", label: "Kelola Ujian", icon: FileText },
   { path: "/admin/results", label: "Hasil Siswa", icon: Users },
+  { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {

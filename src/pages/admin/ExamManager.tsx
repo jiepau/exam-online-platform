@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, Download, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, FileText, ImagePlus } from "lucide-react";
 import mammoth from "mammoth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +30,7 @@ interface QuestionForm {
   question_text: string;
   options: string[];
   correct_answer: number;
+  image_url?: string;
 }
 
 const ExamManager = () => {
@@ -45,6 +46,7 @@ const ExamManager = () => {
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
   const fetchExams = async () => {
     const { data } = await supabase.from("exams").select("*").order("created_at", { ascending: false });
@@ -140,13 +142,14 @@ const ExamManager = () => {
           question_text: q.question_text,
           options: q.options as string[],
           correct_answer: q.correct_answer,
+          image_url: q.image_url || undefined,
         }))
       );
     }
   };
 
   const addEmptyQuestion = () => {
-    setQuestions((prev) => [...prev, { question_text: "", options: ["", "", "", ""], correct_answer: 0 }]);
+    setQuestions((prev) => [...prev, { question_text: "", options: ["", "", "", ""], correct_answer: 0, image_url: undefined }]);
   };
 
   const updateQuestion = (index: number, field: string, value: any) => {
@@ -206,6 +209,19 @@ const ExamManager = () => {
       }
     }
     return questions;
+  };
+
+  const handleUploadQuestionImage = async (qIndex: number, file: File) => {
+    const ext = file.name.split(".").pop();
+    const path = `${questionsDialog}/${Date.now()}_${qIndex}.${ext}`;
+    const { data, error } = await supabase.storage.from("question-images").upload(path, file);
+    if (error) {
+      toast.error("Gagal upload gambar: " + error.message);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("question-images").getPublicUrl(path);
+    updateQuestion(qIndex, "image_url", urlData.publicUrl);
+    toast.success("Gambar berhasil diupload");
   };
 
   const handleImportQuestions = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -304,6 +320,7 @@ D. Pasar
       question_text: q.question_text,
       options: q.options,
       correct_answer: q.correct_answer,
+      image_url: q.image_url || null,
       sort_order: i,
     }));
 
@@ -417,6 +434,37 @@ D. Pasar
                     <span className="text-xs text-muted-foreground mb-1 block">Preview:</span>
                     <MathText text={q.question_text} />
                   </div>
+                )}
+                {/* Image upload */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => imageInputRefs.current[qi]?.click()}
+                  >
+                    <ImagePlus className="h-4 w-4" /> {q.image_url ? "Ganti Gambar" : "Tambah Gambar"}
+                  </Button>
+                  {q.image_url && (
+                    <Button type="button" variant="ghost" size="sm" className="text-destructive" onClick={() => updateQuestion(qi, "image_url", undefined)}>
+                      Hapus Gambar
+                    </Button>
+                  )}
+                  <input
+                    ref={(el) => { imageInputRefs.current[qi] = el; }}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadQuestionImage(qi, file);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
+                {q.image_url && (
+                  <img src={q.image_url} alt={`Gambar soal ${qi + 1}`} className="max-h-48 rounded-lg border border-border object-contain" />
                 )}
                 <div className="space-y-2">
                   {q.options.map((opt, oi) => (

@@ -16,7 +16,7 @@ const AuthPage = () => {
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
   const [regName, setRegName] = useState("");
-  const [regRole, setRegRole] = useState<"admin" | "student">("student");
+  const [regRole] = useState<"admin" | "student">("admin");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -62,8 +62,8 @@ const AuthPage = () => {
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl exam-gradient">
             <GraduationCap className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">ExamKu</h1>
-          <p className="text-sm text-muted-foreground mt-1">Sistem Ujian Online</p>
+          <h1 className="text-2xl font-bold text-foreground">MTS Al Wathoniyah 43</h1>
+          <p className="text-sm text-muted-foreground mt-1">Portal Guru</p>
         </div>
 
         <div className="rounded-2xl bg-card p-6 shadow-xl border border-border">
@@ -73,7 +73,7 @@ const AuthPage = () => {
                 <LogIn className="h-4 w-4" /> Masuk
               </TabsTrigger>
               <TabsTrigger value="register" className="flex-1 gap-1.5">
-                <UserPlus className="h-4 w-4" /> Daftar
+                <UserPlus className="h-4 w-4" /> Daftar Guru
               </TabsTrigger>
             </TabsList>
 
@@ -136,33 +136,9 @@ const AuthPage = () => {
                     className="h-11"
                   />
                 </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Daftar Sebagai</label>
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setRegRole("student")}
-                      className={`flex-1 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-                        regRole === "student"
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/30"
-                      }`}
-                    >
-                      🎓 Siswa
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRegRole("admin")}
-                      className={`flex-1 rounded-lg border-2 p-3 text-sm font-medium transition-colors ${
-                        regRole === "admin"
-                          ? "border-primary bg-primary/5 text-primary"
-                          : "border-border text-muted-foreground hover:border-primary/30"
-                      }`}
-                    >
-                      👨‍🏫 Guru
-                    </button>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Pendaftaran ini khusus untuk Guru. Akun siswa didaftarkan oleh Guru melalui panel admin.
+                </p>
                 <Button type="submit" disabled={isLoading} className="h-11 w-full exam-gradient border-0">
                   {isLoading ? "Memproses..." : "Daftar"}
                 </Button>
