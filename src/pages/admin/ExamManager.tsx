@@ -414,6 +414,19 @@ D. Pasar
           <p className="text-xs text-muted-foreground">
             📄 Support format: <strong>Word (.docx)</strong> dan JSON. Download template untuk contoh format. Tandai jawaban benar dengan tanda <strong>*</strong>
           </p>
+          <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1">
+            <p className="font-semibold text-foreground">📐 Panduan Penulisan Rumus Matematika (LaTeX):</p>
+            <p>Gunakan tanda <code className="bg-muted px-1 rounded">$...$</code> untuk rumus inline. Contoh:</p>
+            <ul className="list-disc list-inside space-y-0.5 ml-2">
+              <li><code className="bg-muted px-1 rounded">$1\frac{"{3}{4}"}$</code> → 1¾</li>
+              <li><code className="bg-muted px-1 rounded">$\frac{"{a}{b}"}$</code> → pecahan a/b</li>
+              <li><code className="bg-muted px-1 rounded">$x^2 + y^2 = z^2$</code> → pangkat</li>
+              <li><code className="bg-muted px-1 rounded">$\sqrt{"{x}"}$</code> → akar kuadrat</li>
+              <li><code className="bg-muted px-1 rounded">$\times$</code> → tanda kali (×)</li>
+              <li><code className="bg-muted px-1 rounded">$\div$</code> → tanda bagi (÷)</li>
+            </ul>
+            <p className="mt-1">Contoh soal: <code className="bg-muted px-1 rounded text-foreground">Hasil dari $1\frac{"{3}{4}"} : 2\frac{"{1}{4}"} + 1\frac{"{1}{3}"}$ adalah ...</code></p>
+          </div>
           <div className="space-y-6">
             {questions.map((q, qi) => (
               <div key={qi} className="rounded-xl border border-border p-4 space-y-3">
