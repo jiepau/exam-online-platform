@@ -80,27 +80,56 @@ const ExamPage = () => {
     fetchQuestions();
   }, [state, navigate]);
 
-  const handleSubmitFn = useCallback(() => {
+  const handleSubmitFn = useCallback(async () => {
     let correct = 0;
     questions.forEach((q, i) => {
       if (answers[i] === q.correct_answer) correct++;
     });
+
+    const total = questions.length;
+    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    // Save session to database
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && state?.examId) {
+        const { data: session } = await supabase
+          .from("exam_sessions")
+          .insert({
+            student_id: user.id,
+            exam_id: state.examId,
+            score,
+            correct_answers: correct,
+            total_questions: total,
+            finished_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        // Save individual answers
+        if (session) {
+          const answerRows = questions.map((q, i) => ({
+            session_id: session.id,
+            question_id: q.id,
+            selected_answer: answers[i] ?? null,
+            is_flagged: flagged.has(i),
+          }));
+          await supabase.from("student_answers").insert(answerRows);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to save exam session:", e);
+    }
+
     navigate("/result", {
       state: {
         studentName,
         examTitle,
-        total: questions.length,
+        total,
         correct,
-        answers,
-        questions: questions.map((q) => ({
-          id: q.id,
-          text: q.question_text,
-          options: q.options,
-          correctAnswer: q.correct_answer,
-        })),
       },
     });
-  }, [answers, questions, navigate, studentName, examTitle]);
+  }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
 
   // Anti-cheat
   const { violations, isFullscreen, enterFullscreen, maxViolations } = useAntiCheat(
