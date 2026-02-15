@@ -157,15 +157,43 @@ const StudentManager = () => {
         return;
       }
 
-      const studentsToImport = dataLines.map((line) => {
-        const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
+      // Sanitize CSV field: strip injection prefixes and quotes
+      const sanitize = (field: string) =>
+        field.trim().replace(/^[=+@\-]/, "").replace(/^"|"$/g, "").trim();
+
+      const parsed = dataLines.map((line) => {
+        const parts = line.split(",").map(sanitize);
         return {
           nisn: parts[0] || "",
           full_name: parts[1] || "",
           password: parts[2] || "",
           class_name: parts[3] || "",
         };
-      }).filter((s) => s.nisn && s.full_name && s.password);
+      });
+
+      // Client-side validation before sending to server
+      const errors: string[] = [];
+      const studentsToImport = parsed.filter((s) => {
+        if (!s.nisn || !s.full_name || !s.password) return false;
+        if (!/^\d{4,20}$/.test(s.nisn)) {
+          errors.push(`NISN ${s.nisn}: format tidak valid`);
+          return false;
+        }
+        if (s.full_name.length < 2 || s.full_name.length > 100) {
+          errors.push(`Nama "${s.full_name.substring(0, 20)}": harus 2-100 karakter`);
+          return false;
+        }
+        if (s.password.length < 8 || !/[A-Z]/.test(s.password) || !/[0-9]/.test(s.password)) {
+          errors.push(`NISN ${s.nisn}: password tidak memenuhi syarat`);
+          return false;
+        }
+        return true;
+      });
+
+      if (errors.length > 0) {
+        toast.warning(`${errors.length} baris ditolak saat validasi.`);
+        errors.slice(0, 5).forEach((err) => toast.error(err));
+      }
 
       if (studentsToImport.length === 0) {
         toast.error("Tidak ada data valid. Format: NISN,Nama,Password,Kelas");
