@@ -2,3 +2,6 @@ project_id = "wcmahtzeaziqjmswqmcd"
 
 [functions.register-student]
 verify_jwt = false
+
+[functions.submit-exam]
+verify_jwt = false

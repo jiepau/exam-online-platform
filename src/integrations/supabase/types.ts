@@ -237,6 +237,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "student_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions_student"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "student_answers_session_id_fkey"
             columns: ["session_id"]
             isOneToOne: false
@@ -265,7 +272,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      questions_student: {
+        Row: {
+          created_at: string | null
+          exam_id: string | null
+          id: string | null
+          image_url: string | null
+          options: Json | null
+          question_text: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          exam_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          options?: Json | null
+          question_text?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          exam_id?: string | null
+          id?: string | null
+          image_url?: string | null
+          options?: Json | null
+          question_text?: string | null
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
