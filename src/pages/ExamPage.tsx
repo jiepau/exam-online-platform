@@ -23,7 +23,6 @@ interface DBQuestion {
   id: string;
   question_text: string;
   options: string[];
-  correct_answer: number;
   sort_order: number;
   image_url?: string;
 }
@@ -59,8 +58,8 @@ const ExamPage = () => {
     }
     const fetchQuestions = async () => {
       const { data } = await supabase
-        .from("questions")
-        .select("*")
+        .from("questions_student" as any)
+        .select("id, exam_id, question_text, options, sort_order, image_url")
         .eq("exam_id", state.examId)
         .order("sort_order");
       if (data) {
@@ -69,7 +68,6 @@ const ExamPage = () => {
             id: q.id,
             question_text: q.question_text,
             options: q.options as string[],
-            correct_answer: q.correct_answer,
             sort_order: q.sort_order,
             image_url: q.image_url || undefined,
           }))
@@ -81,54 +79,36 @@ const ExamPage = () => {
   }, [state, navigate]);
 
   const handleSubmitFn = useCallback(async () => {
-    let correct = 0;
-    questions.forEach((q, i) => {
-      if (answers[i] === q.correct_answer) correct++;
-    });
-
     const total = questions.length;
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-    // Save session to database
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && state?.examId) {
-        const { data: session } = await supabase
-          .from("exam_sessions")
-          .insert({
-            student_id: user.id,
-            exam_id: state.examId,
-            score,
-            correct_answers: correct,
-            total_questions: total,
-            finished_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
+      // Server-side scoring via edge function
+      const { data, error } = await supabase.functions.invoke("submit-exam", {
+        body: {
+          exam_id: state?.examId,
+          answers,
+          flagged_indices: Array.from(flagged),
+        },
+      });
 
-        // Save individual answers
-        if (session) {
-          const answerRows = questions.map((q, i) => ({
-            session_id: session.id,
-            question_id: q.id,
-            selected_answer: answers[i] ?? null,
-            is_flagged: flagged.has(i),
-          }));
-          await supabase.from("student_answers").insert(answerRows);
-        }
+      if (error) {
+        console.error("Failed to submit exam:", error);
       }
-    } catch (e) {
-      console.error("Failed to save exam session:", e);
-    }
 
-    navigate("/result", {
-      state: {
-        studentName,
-        examTitle,
-        total,
-        correct,
-      },
-    });
+      navigate("/result", {
+        state: {
+          studentName,
+          examTitle,
+          total,
+          correct: data?.correct ?? 0,
+        },
+      });
+    } catch (e) {
+      console.error("Failed to submit exam:", e);
+      navigate("/result", {
+        state: { studentName, examTitle, total, correct: 0 },
+      });
+    }
   }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
 
   // Anti-cheat
