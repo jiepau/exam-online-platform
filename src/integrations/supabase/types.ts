@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      classes: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       exam_sessions: {
         Row: {
           correct_answers: number | null
@@ -93,27 +114,56 @@ export type Database = {
       }
       profiles: {
         Row: {
+          birth_date: string | null
+          birth_place: string | null
+          class_id: string | null
           created_at: string
           full_name: string
           id: string
+          nip: string | null
           nisn: string | null
+          nuptk: string | null
+          subject: string | null
           user_id: string
+          whatsapp: string | null
         }
         Insert: {
+          birth_date?: string | null
+          birth_place?: string | null
+          class_id?: string | null
           created_at?: string
           full_name: string
           id?: string
+          nip?: string | null
           nisn?: string | null
+          nuptk?: string | null
+          subject?: string | null
           user_id: string
+          whatsapp?: string | null
         }
         Update: {
+          birth_date?: string | null
+          birth_place?: string | null
+          class_id?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          nip?: string | null
           nisn?: string | null
+          nuptk?: string | null
+          subject?: string | null
           user_id?: string
+          whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions: {
         Row: {

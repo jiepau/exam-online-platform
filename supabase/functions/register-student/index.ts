@@ -42,7 +42,6 @@ Deno.serve(async (req) => {
     }
 
     const { students } = await req.json();
-    // students: Array of { nisn, full_name, password }
 
     if (!Array.isArray(students) || students.length === 0) {
       return new Response(JSON.stringify({ error: "No students provided" }), {
@@ -54,13 +53,12 @@ Deno.serve(async (req) => {
     const results: { nisn: string; success: boolean; error?: string }[] = [];
 
     for (const s of students) {
-      const { nisn, full_name, password } = s;
+      const { nisn, full_name, password, class_id } = s;
       if (!nisn || !full_name || !password) {
         results.push({ nisn: nisn || "?", success: false, error: "Data tidak lengkap" });
         continue;
       }
 
-      // Use nisn as fake email for auth
       const email = `${nisn}@student.mts43.local`;
 
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
@@ -78,8 +76,10 @@ Deno.serve(async (req) => {
       // Assign student role
       await adminClient.from("user_roles").insert({ user_id: newUser.user!.id, role: "student" });
 
-      // Update profile with NISN
-      await adminClient.from("profiles").update({ nisn }).eq("user_id", newUser.user!.id);
+      // Update profile with NISN and class
+      const updateData: Record<string, any> = { nisn };
+      if (class_id) updateData.class_id = class_id;
+      await adminClient.from("profiles").update(updateData).eq("user_id", newUser.user!.id);
 
       results.push({ nisn, success: true });
     }
