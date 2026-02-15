@@ -1,22 +1,17 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { GraduationCap, LogIn, UserPlus } from "lucide-react";
+import { GraduationCap, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 
 const AuthPage = () => {
   const navigate = useNavigate();
-  const { user, role, signIn, signUp } = useAuth();
+  const { user, role, signIn } = useAuth();
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPassword, setRegPassword] = useState("");
-  const [regName, setRegName] = useState("");
-  const [regRole] = useState<"admin" | "student">("admin");
   const [isLoading, setIsLoading] = useState(false);
 
   // Auto-redirect after login
@@ -44,26 +39,6 @@ const AuthPage = () => {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!regEmail || !regPassword || !regName) {
-      toast.error("Mohon isi semua kolom");
-      return;
-    }
-    if (regPassword.length < 6) {
-      toast.error("Password minimal 6 karakter");
-      return;
-    }
-    setIsLoading(true);
-    const { error } = await signUp(regEmail, regPassword, regName, regRole);
-    setIsLoading(false);
-    if (error) {
-      toast.error(error);
-    } else {
-      toast.success("Pendaftaran berhasil! Silakan cek email untuk verifikasi.");
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
@@ -76,84 +51,40 @@ const AuthPage = () => {
         </div>
 
         <div className="rounded-2xl bg-card p-6 shadow-xl border border-border">
-          <Tabs defaultValue="login">
-            <TabsList className="w-full">
-              <TabsTrigger value="login" className="flex-1 gap-1.5">
-                <LogIn className="h-4 w-4" /> Masuk
-              </TabsTrigger>
-              <TabsTrigger value="register" className="flex-1 gap-1.5">
-                <UserPlus className="h-4 w-4" /> Daftar Guru
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex items-center gap-2 mb-4 justify-center">
+            <LogIn className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-foreground">Masuk</h2>
+          </div>
 
-            <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4 mt-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="email@contoh.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Masukkan password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <Button type="submit" disabled={isLoading} className="h-11 w-full exam-gradient border-0">
-                  {isLoading ? "Memproses..." : "Masuk"}
-                </Button>
-              </form>
-            </TabsContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
+              <Input
+                type="email"
+                placeholder="email@contoh.com"
+                value={loginEmail}
+                onChange={(e) => setLoginEmail(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-foreground">Password</label>
+              <Input
+                type="password"
+                placeholder="Masukkan password"
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <Button type="submit" disabled={isLoading} className="h-11 w-full exam-gradient border-0">
+              {isLoading ? "Memproses..." : "Masuk"}
+            </Button>
+          </form>
 
-            <TabsContent value="register">
-              <form onSubmit={handleRegister} className="space-y-4 mt-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Nama Lengkap</label>
-                  <Input
-                    placeholder="Nama lengkap"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="email@contoh.com"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-foreground">Password</label>
-                  <Input
-                    type="password"
-                    placeholder="Minimal 6 karakter"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Pendaftaran ini khusus untuk Guru. Akun siswa didaftarkan oleh Guru melalui panel admin.
-                </p>
-                <Button type="submit" disabled={isLoading} className="h-11 w-full exam-gradient border-0">
-                  {isLoading ? "Memproses..." : "Daftar"}
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
+          <p className="text-xs text-muted-foreground mt-4 text-center">
+            Akun guru dibuat oleh administrator. Hubungi admin jika belum memiliki akun.
+          </p>
         </div>
 
         <button

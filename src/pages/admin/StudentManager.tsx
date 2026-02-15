@@ -93,8 +93,16 @@ const StudentManager = () => {
       toast.error("Mohon isi semua kolom");
       return;
     }
-    if (password.length < 6) {
-      toast.error("Password minimal 6 karakter");
+    if (password.length < 8) {
+      toast.error("Password minimal 8 karakter");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      toast.error("Password harus mengandung huruf besar");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      toast.error("Password harus mengandung angka");
       return;
     }
 

@@ -3,8 +3,21 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+function validatePassword(password: string): { valid: boolean; error?: string } {
+  if (!password || password.length < 8) {
+    return { valid: false, error: "Password minimal 8 karakter" };
+  }
+  if (!/[A-Z]/.test(password)) {
+    return { valid: false, error: "Password harus mengandung huruf besar" };
+  }
+  if (!/[0-9]/.test(password)) {
+    return { valid: false, error: "Password harus mengandung angka" };
+  }
+  return { valid: true };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -49,6 +62,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Limit batch size to prevent abuse
+    if (students.length > 100) {
+      return new Response(JSON.stringify({ error: "Maximum 100 students per batch" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const results: { nisn: string; success: boolean; error?: string }[] = [];
 
@@ -59,13 +79,32 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      const email = `${nisn}@student.mts43.local`;
+      // Validate NISN format (numeric, reasonable length)
+      if (!/^\d{4,20}$/.test(nisn.trim())) {
+        results.push({ nisn, success: false, error: "Format NISN tidak valid" });
+        continue;
+      }
+
+      // Validate password strength
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) {
+        results.push({ nisn, success: false, error: pwCheck.error! });
+        continue;
+      }
+
+      // Validate full_name length
+      if (full_name.trim().length < 2 || full_name.trim().length > 100) {
+        results.push({ nisn, success: false, error: "Nama harus 2-100 karakter" });
+        continue;
+      }
+
+      const email = `${nisn.trim()}@student.mts43.local`;
 
       const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name, nisn },
+        user_metadata: { full_name: full_name.trim(), nisn: nisn.trim() },
       });
 
       if (createError) {
@@ -77,7 +116,7 @@ Deno.serve(async (req) => {
       await adminClient.from("user_roles").insert({ user_id: newUser.user!.id, role: "student" });
 
       // Update profile with NISN and class
-      const updateData: Record<string, any> = { nisn };
+      const updateData: Record<string, string> = { nisn: nisn.trim() };
       if (class_id) updateData.class_id = class_id;
       await adminClient.from("profiles").update(updateData).eq("user_id", newUser.user!.id);
 
@@ -90,7 +129,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
