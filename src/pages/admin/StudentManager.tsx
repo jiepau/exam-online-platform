@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Users, Upload, FileText } from "lucide-react";
+import { Plus, Users, Upload, FileText, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import ExamCardPrinter from "@/components/admin/ExamCardPrinter";
 
 interface ClassItem {
   id: string;
@@ -42,6 +43,7 @@ const StudentManager = () => {
   const [password, setPassword] = useState("");
   const [selectedClass, setSelectedClass] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPrint, setShowPrint] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchClasses = async () => {
@@ -222,6 +224,9 @@ const StudentManager = () => {
           <Button variant="outline" onClick={downloadTemplate} className="gap-2">
             <FileText className="h-4 w-4" /> Template
           </Button>
+          <Button variant="outline" onClick={() => setShowPrint(true)} className="gap-2" disabled={filteredStudents.length === 0}>
+            <Printer className="h-4 w-4" /> Cetak Kartu
+          </Button>
           <Button onClick={() => setShowCreate(true)} className="gap-2 exam-gradient border-0">
             <Plus className="h-4 w-4" /> Tambah Siswa
           </Button>
@@ -317,6 +322,13 @@ const StudentManager = () => {
           </div>
         ))}
       </div>
+
+      <ExamCardPrinter
+        open={showPrint}
+        onOpenChange={setShowPrint}
+        students={filteredStudents}
+        getClassName={getClassName}
+      />
     </AdminLayout>
   );
 };
