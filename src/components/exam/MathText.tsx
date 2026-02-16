@@ -11,6 +11,15 @@ interface MathTextProps {
  * Renders text with inline math ($...$) and block math ($$...$$) using KaTeX.
  * Also auto-detects Arabic text and applies RTL direction.
  */
+const escapeHtml = (str: string): string => {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 const MathText = ({ text, className = "" }: MathTextProps) => {
   const rendered = useMemo(() => {
     if (!text) return "";
@@ -59,13 +68,14 @@ const MathText = ({ text, className = "" }: MathTextProps) => {
           }
         }
 
-        // Regular text - check for Arabic characters for RTL
+        // Regular text - escape HTML to prevent XSS, then check for Arabic characters for RTL
+        const escaped = escapeHtml(segment);
         const hasArabic = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(segment);
         if (hasArabic) {
-          return `<span dir="rtl" class="inline-block text-right font-arabic">${segment}</span>`;
+          return `<span dir="rtl" class="inline-block text-right font-arabic">${escaped}</span>`;
         }
 
-        return segment;
+        return escaped;
       })
       .join("");
   }, [text]);
