@@ -25,6 +25,8 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
   const [room, setRoom] = useState("");
   const [examDate, setExamDate] = useState("");
   const [principalName, setPrincipalName] = useState("");
+  const [city, setCity] = useState("Jakarta");
+  const [startNumber, setStartNumber] = useState(1);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -134,6 +136,14 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
             <Label>Nama Kepala Sekolah</Label>
             <Input value={principalName} onChange={(e) => setPrincipalName(e.target.value)} placeholder="H. Ahmad, S.Pd.I" />
           </div>
+          <div>
+            <Label>Kota</Label>
+            <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Jakarta" />
+          </div>
+          <div>
+            <Label>Nomor Ujian Mulai Dari</Label>
+            <Input type="number" min={1} value={startNumber} onChange={(e) => setStartNumber(Number(e.target.value) || 1)} placeholder="1" />
+          </div>
         </div>
 
         {/* Signature Upload */}
@@ -163,7 +173,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
         <div className="border rounded-lg p-4 bg-white text-black overflow-auto max-h-[50vh]">
           <div ref={printRef}>
             <div className="cards-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-              {students.map((student) => (
+              {students.map((student, index) => (
                 <div key={student.user_id} style={{ border: "1.5px solid #000", padding: "10px", breakInside: "avoid", fontSize: "11px", fontFamily: "'Times New Roman', serif" }}>
                   {/* Header */}
                   <div style={{ display: "flex", alignItems: "center", gap: "8px", borderBottom: "1.5px solid #000", paddingBottom: "6px", marginBottom: "6px" }}>
@@ -198,17 +208,18 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                         <td style={{ fontWeight: "bold", padding: "2px 4px" }}>Ruangan</td>
                         <td style={{ padding: "2px 4px" }}>: {room || "-"}</td>
                       </tr>
-                      {examDate && (
-                        <tr>
-                          <td style={{ fontWeight: "bold", padding: "2px 4px" }}>Tanggal</td>
-                          <td style={{ padding: "2px 4px" }}>: {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</td>
-                        </tr>
-                      )}
+                      <tr>
+                        <td style={{ fontWeight: "bold", padding: "2px 4px" }}>No. Ujian</td>
+                        <td style={{ padding: "2px 4px" }}>: {String(startNumber + index).padStart(2, "0")}</td>
+                      </tr>
                     </tbody>
                   </table>
 
-                  {/* Footer - Signature */}
+                  {/* Footer - Date & Signature */}
                   <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px" }}>
+                    {examDate && (
+                      <div>{city}, {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>
+                    )}
                     <div>Kepala Madrasah,</div>
                     <div style={{ height: "50px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
                       {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
