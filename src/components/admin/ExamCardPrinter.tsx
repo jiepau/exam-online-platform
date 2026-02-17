@@ -27,6 +27,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
   const [principalName, setPrincipalName] = useState("");
   const [city, setCity] = useState("Jakarta");
   const [startNumber, setStartNumber] = useState(1);
+  const [examNumbers, setExamNumbers] = useState<Record<string, string>>({});
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -142,7 +143,12 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           </div>
           <div>
             <Label>Nomor Ujian Mulai Dari</Label>
-            <Input type="number" min={1} value={startNumber} onChange={(e) => setStartNumber(Number(e.target.value) || 1)} placeholder="1" />
+            <Input type="number" min={1} value={startNumber} onChange={(e) => {
+              const val = Number(e.target.value) || 1;
+              setStartNumber(val);
+              // Reset manual overrides when start number changes
+              setExamNumbers({});
+            }} placeholder="1" />
           </div>
         </div>
 
@@ -167,6 +173,36 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           <Button onClick={handlePrint} className="gap-2 exam-gradient border-0">
             <Printer className="h-4 w-4" /> Cetak Sekarang
           </Button>
+        </div>
+
+        {/* Editable Exam Numbers Table */}
+        <div className="mb-4 max-h-[30vh] overflow-auto border rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nama</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground">Kelas</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-24">No. Ujian</th>
+              </tr>
+            </thead>
+            <tbody>
+              {students.map((student, index) => (
+                <tr key={student.user_id} className="border-t border-border">
+                  <td className="px-3 py-1.5 text-muted-foreground">{index + 1}</td>
+                  <td className="px-3 py-1.5">{student.full_name}</td>
+                  <td className="px-3 py-1.5 text-muted-foreground">{getClassName(student.class_id)}</td>
+                  <td className="px-3 py-1.5">
+                    <Input
+                      className="h-7 w-20 text-center text-sm"
+                      value={examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}
+                      onChange={(e) => setExamNumbers(prev => ({ ...prev, [student.user_id]: e.target.value }))}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Print Preview */}
@@ -210,7 +246,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                       </tr>
                       <tr>
                         <td style={{ fontWeight: "bold", padding: "2px 4px" }}>No. Ujian</td>
-                        <td style={{ padding: "2px 4px" }}>: {String(startNumber + index).padStart(2, "0")}</td>
+                        <td style={{ padding: "2px 4px" }}>: {examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}</td>
                       </tr>
                     </tbody>
                   </table>
