@@ -23,6 +23,8 @@ const escapeHtml = (str: string): string => {
 const MathText = ({ text, className = "" }: MathTextProps) => {
   const rendered = useMemo(() => {
     if (!text) return "";
+    // Normalize common Unicode math symbols
+    text = text.replace(/−/g, "-").replace(/×/g, "\\times ").replace(/÷/g, "\\div ");
 
     // Split by $$...$$ (block) and $...$ (inline)
     const parts: string[] = [];
@@ -80,12 +82,7 @@ const MathText = ({ text, className = "" }: MathTextProps) => {
       .join("");
   }, [text]);
 
-  return (
-    <div
-      className={`math-text ${className}`}
-      dangerouslySetInnerHTML={{ __html: rendered }}
-    />
-  );
+  return <div className={`math-text ${className}`} dangerouslySetInnerHTML={{ __html: rendered }} />;
 };
 
 export default MathText;
