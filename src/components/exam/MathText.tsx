@@ -28,7 +28,7 @@ const MathText = ({ text, className = "" }: MathTextProps) => {
 
     // Split by $$...$$ (block) and $...$ (inline)
     const parts: string[] = [];
-    let remaining = normalized;
+    let remaining = text;
 
     // Process block math first ($$...$$)
     const blockRegex = /\$\$([\s\S]*?)\$\$/g;
