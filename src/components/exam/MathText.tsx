@@ -8,9 +8,13 @@ interface MathTextProps {
 }
 
 /**
- * Renders text with inline math ($...$) and block math ($$...$$) using KaTeX.
- * Also auto-detects Arabic text and applies RTL direction.
+ * Smart MathText Renderer
+ * Supports:
+ *  - Inline: $...$ or \( ... \)
+ *  - Block: $$...$$ or \[ ... \]
+ * Auto-normalizes Unicode math symbols (− × ÷).
  */
+
 const escapeHtml = (str: string): string => {
   return str
     .replace(/&/g, "&amp;")
@@ -20,59 +24,69 @@ const escapeHtml = (str: string): string => {
     .replace(/'/g, "&#039;");
 };
 
+const normalizeLatex = (input: string) => {
+  return input
+    .replace(/−/g, "-") // Unicode minus → normal minus
+    .replace(/×/g, "\\times ")
+    .replace(/÷/g, "\\div ")
+    .replace(/\u00A0/g, " "); // non-breaking space
+};
+
 const MathText = ({ text, className = "" }: MathTextProps) => {
   const rendered = useMemo(() => {
     if (!text) return "";
-    // Normalize common Unicode math symbols
-    text = text.replace(/−/g, "-").replace(/×/g, "\\times ").replace(/÷/g, "\\div ");
 
-    // Split by $$...$$ (block) and $...$ (inline)
-    const parts: string[] = [];
-    let remaining = text;
+    // Normalize symbols first
+    const normalizedText = normalizeLatex(text);
 
-    // Process block math first ($$...$$)
-    const blockRegex = /\$\$([\s\S]*?)\$\$/g;
-    let lastIndex = 0;
-    let match;
+    // Replace block delimiters \[...\] into $$...$$
+    let processed = normalizedText
+      .replace(/\\\[(.*?)\\\]/gs, (_, formula) => `$$${formula}$$`)
+      .replace(/\\\((.*?)\\\)/gs, (_, formula) => `$${formula}$`);
 
-    const tempParts: { type: "text" | "block" | "inline"; content: string }[] = [];
-
-    // First pass: extract block math
-    const withoutBlock = remaining.replace(blockRegex, (fullMatch, formula) => {
-      return `%%BLOCK_MATH%%${formula}%%END_BLOCK%%`;
+    // Extract block math first
+    processed = processed.replace(/\$\$([\s\S]*?)\$\$/g, (_, formula) => {
+      try {
+        return `%%BLOCK%%${katex.renderToString(formula.trim(), {
+          displayMode: true,
+          throwOnError: false,
+        })}%%END_BLOCK%%`;
+      } catch {
+        return `%%BLOCK%%<span class="text-red-500">${formula}</span>%%END_BLOCK%%`;
+      }
     });
 
-    // Second pass: extract inline math
-    const withoutInline = withoutBlock.replace(/\$([^$\n]+?)\$/g, (fullMatch, formula) => {
-      return `%%INLINE_MATH%%${formula}%%END_INLINE%%`;
+    // Extract inline math
+    processed = processed.replace(/\$([^$\n]+?)\$/g, (_, formula) => {
+      try {
+        return `%%INLINE%%${katex.renderToString(formula.trim(), {
+          displayMode: false,
+          throwOnError: false,
+        })}%%END_INLINE%%`;
+      } catch {
+        return `%%INLINE%%<span class="text-red-500">${formula}</span>%%END_INLINE%%`;
+      }
     });
 
-    // Now split and render
-    const segments = withoutInline.split(/(%%BLOCK_MATH%%[\s\S]*?%%END_BLOCK%%|%%INLINE_MATH%%[\s\S]*?%%END_INLINE%%)/);
+    // Split into segments and escape normal text
+    const segments = processed.split(/(%%BLOCK%%[\s\S]*?%%END_BLOCK%%|%%INLINE%%[\s\S]*?%%END_INLINE%%)/);
 
     return segments
       .map((segment) => {
-        const blockMatch = segment.match(/%%BLOCK_MATH%%([\s\S]*?)%%END_BLOCK%%/);
-        if (blockMatch) {
-          try {
-            return `<div class="my-2 text-center">${katex.renderToString(blockMatch[1].trim(), { displayMode: true, throwOnError: false })}</div>`;
-          } catch {
-            return `<div class="my-2 text-center text-destructive">${blockMatch[1]}</div>`;
-          }
+        if (segment.startsWith("%%BLOCK%%")) {
+          return segment.replace("%%BLOCK%%", "").replace("%%END_BLOCK%%", "");
         }
 
-        const inlineMatch = segment.match(/%%INLINE_MATH%%([\s\S]*?)%%END_INLINE%%/);
-        if (inlineMatch) {
-          try {
-            return katex.renderToString(inlineMatch[1].trim(), { displayMode: false, throwOnError: false });
-          } catch {
-            return `<span class="text-destructive">${inlineMatch[1]}</span>`;
-          }
+        if (segment.startsWith("%%INLINE%%")) {
+          return segment.replace("%%INLINE%%", "").replace("%%END_INLINE%%", "");
         }
 
-        // Regular text - escape HTML to prevent XSS, then check for Arabic characters for RTL
+        // Regular text
         const escaped = escapeHtml(segment);
+
+        // Arabic RTL detection
         const hasArabic = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(segment);
+
         if (hasArabic) {
           return `<span dir="rtl" class="inline-block text-right font-arabic">${escaped}</span>`;
         }
