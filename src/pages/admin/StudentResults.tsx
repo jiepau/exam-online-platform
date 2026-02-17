@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SessionResult {
   id: string;
@@ -10,32 +11,55 @@ interface SessionResult {
   started_at: string;
   finished_at: string | null;
   exam_title: string;
+  exam_subject: string;
   student_name: string;
+  class_name: string;
+  class_id: string | null;
+}
+
+interface ClassOption {
+  id: string;
+  name: string;
 }
 
 const StudentResults = () => {
   const [results, setResults] = useState<SessionResult[]>([]);
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [filterClass, setFilterClass] = useState("all");
+  const [filterSubject, setFilterSubject] = useState("all");
 
   useEffect(() => {
-    const fetchResults = async () => {
+    const fetchData = async () => {
+      // Fetch classes
+      const { data: classData } = await supabase
+        .from("classes")
+        .select("id, name")
+        .order("sort_order");
+      setClasses(classData || []);
+
       // Fetch sessions with exam info
       const { data: sessions } = await supabase
         .from("exam_sessions")
-        .select("*, exams(title)")
+        .select("*, exams(title, subject)")
         .order("started_at", { ascending: false });
 
       if (sessions) {
-        // Fetch profiles for all student IDs
         const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("user_id, full_name")
+          .select("user_id, full_name, class_id")
           .in("user_id", studentIds);
 
-        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p.full_name]));
+        const profileMap = new Map(
+          (profiles || []).map((p: any) => [p.user_id, p])
+        );
 
-        setResults(
-          sessions.map((s: any) => ({
+        const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
+
+        const mapped = sessions.map((s: any) => {
+          const profile = profileMap.get(s.student_id);
+          return {
             id: s.id,
             score: s.score,
             total_questions: s.total_questions,
@@ -43,19 +67,67 @@ const StudentResults = () => {
             started_at: s.started_at,
             finished_at: s.finished_at,
             exam_title: s.exams?.title || "Unknown",
-            student_name: profileMap.get(s.student_id) || "Unknown",
-          }))
-        );
+            exam_subject: s.exams?.subject || "Unknown",
+            student_name: profile?.full_name || "Unknown",
+            class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
+            class_id: profile?.class_id || null,
+          };
+        });
+
+        setResults(mapped);
+
+        // Extract unique subjects
+        const uniqueSubjects = [...new Set(mapped.map((r) => r.exam_subject))].sort();
+        setSubjects(uniqueSubjects);
       }
     };
-    fetchResults();
+    fetchData();
   }, []);
+
+  const filtered = results.filter((r) => {
+    if (filterClass !== "all" && r.class_id !== filterClass) return false;
+    if (filterSubject !== "all" && r.exam_subject !== filterSubject) return false;
+    return true;
+  });
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl font-bold text-foreground mb-6">Hasil Siswa</h2>
+      <h2 className="text-2xl font-bold text-foreground mb-4">Hasil Siswa</h2>
 
-      {results.length === 0 ? (
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <div className="w-48">
+          <Select value={filterClass} onValueChange={setFilterClass}>
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Kelas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Kelas</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="w-48">
+          <Select value={filterSubject} onValueChange={setFilterSubject}>
+            <SelectTrigger>
+              <SelectValue placeholder="Semua Mapel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Mapel</SelectItem>
+              {subjects.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center text-sm text-muted-foreground">
+          {filtered.length} hasil
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
           Belum ada hasil ujian.
         </div>
@@ -65,7 +137,9 @@ const StudentResults = () => {
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Siswa</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Kelas</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ujian</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mapel</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Benar</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
@@ -73,13 +147,15 @@ const StudentResults = () => {
               </tr>
             </thead>
             <tbody>
-              {results.map((r) => {
+              {filtered.map((r) => {
                 const score = r.total_questions ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100) : 0;
                 const passed = score >= 70;
                 return (
                   <tr key={r.id} className="border-b border-border last:border-0">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.class_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.exam_title}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{r.exam_subject}</td>
                     <td className="px-4 py-3 text-center">{r.correct_answers ?? "-"}/{r.total_questions ?? "-"}</td>
                     <td className="px-4 py-3 text-center font-bold text-primary">{r.finished_at ? score : "-"}</td>
                     <td className="px-4 py-3 text-center">
