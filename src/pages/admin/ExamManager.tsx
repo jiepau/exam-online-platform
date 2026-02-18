@@ -479,13 +479,13 @@ D. Pasar
                 {q.image_url && (
                   <img src={q.image_url} alt={`Gambar soal ${qi + 1}`} className="max-h-48 rounded-lg border border-border object-contain" />
                 )}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {q.options.map((opt, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
+                    <div key={oi} className="flex items-start gap-2">
                       <button
                         type="button"
                         onClick={() => updateQuestion(qi, "correct_answer", oi)}
-                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors ${
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition-colors mt-0.5 ${
                           q.correct_answer === oi
                             ? "bg-success text-success-foreground"
                             : "bg-muted text-muted-foreground"
@@ -493,12 +493,19 @@ D. Pasar
                       >
                         {String.fromCharCode(65 + oi)}
                       </button>
-                      <Input
-                        value={opt}
-                        onChange={(e) => updateOption(qi, oi, e.target.value)}
-                        placeholder={`Opsi ${String.fromCharCode(65 + oi)}`}
-                        className="h-9"
-                      />
+                      <div className="flex-1 space-y-1">
+                        <Input
+                          value={opt}
+                          onChange={(e) => updateOption(qi, oi, e.target.value)}
+                          placeholder={`Opsi ${String.fromCharCode(65 + oi)} (gunakan $rumus$ untuk matematika)`}
+                          className="h-9"
+                        />
+                        {opt && /\$/.test(opt) && (
+                          <div className="rounded-md bg-muted/50 px-3 py-1.5 text-sm border border-border">
+                            <MathText text={opt} />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

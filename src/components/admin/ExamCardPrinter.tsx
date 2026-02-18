@@ -25,6 +25,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
   const [room, setRoom] = useState("");
   const [examDate, setExamDate] = useState("");
   const [principalName, setPrincipalName] = useState("");
+  const [principalNip, setPrincipalNip] = useState("");
   const [city, setCity] = useState("Jakarta");
   const [startNumber, setStartNumber] = useState(1);
   const [examNumbers, setExamNumbers] = useState<Record<string, string>>({});
@@ -136,6 +137,10 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           <div>
             <Label>Nama Kepala Sekolah</Label>
             <Input value={principalName} onChange={(e) => setPrincipalName(e.target.value)} placeholder="H. Ahmad, S.Pd.I" />
+          </div>
+          <div>
+            <Label>NIP Kepala Sekolah</Label>
+            <Input value={principalNip} onChange={(e) => setPrincipalNip(e.target.value)} placeholder="197001012000011001" className="font-mono" />
           </div>
           <div>
             <Label>Kota</Label>
@@ -261,6 +266,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                       {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
                     </div>
                     {principalName && <div style={{ fontWeight: "bold", textDecoration: "underline" }}>{principalName}</div>}
+                    {principalNip && <div>NIP. {principalNip}</div>}
                   </div>
                 </div>
               ))}

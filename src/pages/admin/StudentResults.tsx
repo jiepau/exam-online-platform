@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface SessionResult {
@@ -28,6 +30,33 @@ const StudentResults = () => {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
+
+  const exportCSV = (data: SessionResult[], filename: string) => {
+    const header = ["Nama", "Kelas", "Ujian", "Mapel", "Benar", "Total", "Nilai", "Status", "Waktu Mulai"];
+    const rows = data.map((r) => {
+      const score = r.total_questions ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100) : 0;
+      const passed = score >= 70;
+      return [
+        r.student_name,
+        r.class_name,
+        r.exam_title,
+        r.exam_subject,
+        r.correct_answers ?? 0,
+        r.total_questions ?? 0,
+        r.finished_at ? score : "-",
+        r.finished_at ? (passed ? "Lulus" : "Tidak Lulus") : "Berlangsung",
+        new Date(r.started_at).toLocaleString("id-ID"),
+      ];
+    });
+    const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -92,7 +121,25 @@ const StudentResults = () => {
 
   return (
     <AdminLayout>
-      <h2 className="text-2xl font-bold text-foreground mb-4">Hasil Siswa</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-foreground">Hasil Siswa</h2>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            disabled={filtered.length === 0}
+            onClick={() => {
+              const label = filterClass !== "all"
+                ? classes.find(c => c.id === filterClass)?.name || "kelas"
+                : filterSubject !== "all" ? filterSubject : "semua";
+              exportCSV(filtered, `hasil-ujian-${label}.csv`);
+            }}
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-6">
