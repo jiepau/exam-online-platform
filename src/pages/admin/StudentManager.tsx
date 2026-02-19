@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Users, Upload, FileText, Printer } from "lucide-react";
+import { Plus, Users, Upload, FileText, Printer, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -44,6 +54,8 @@ const StudentManager = () => {
   const [selectedClass, setSelectedClass] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPrint, setShowPrint] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchClasses = async () => {
@@ -138,6 +150,40 @@ const StudentManager = () => {
     }
   };
 
+  const handleDeleteStudent = async (userId: string) => {
+    // Delete answers → sessions → user_role → profile (auth user remains but role removed)
+    const { data: sessions } = await supabase.from("exam_sessions").select("id").eq("student_id", userId);
+    if (sessions && sessions.length > 0) {
+      const sessionIds = sessions.map((s) => s.id);
+      await supabase.from("student_answers").delete().in("session_id", sessionIds);
+      await supabase.from("exam_sessions").delete().eq("student_id", userId);
+    }
+    await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", "student");
+    const { error } = await supabase.from("profiles").delete().eq("user_id", userId);
+    if (error) { toast.error("Gagal menghapus siswa"); return; }
+    toast.success("Siswa berhasil dihapus");
+    setStudents((prev) => prev.filter((s) => s.user_id !== userId));
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteAll = async () => {
+    const ids = filteredStudents.map((s) => s.user_id);
+    for (const id of ids) {
+      const { data: sessions } = await supabase.from("exam_sessions").select("id").eq("student_id", id);
+      if (sessions && sessions.length > 0) {
+        const sessionIds = sessions.map((s) => s.id);
+        await supabase.from("student_answers").delete().in("session_id", sessionIds);
+        await supabase.from("exam_sessions").delete().eq("student_id", id);
+      }
+      await supabase.from("user_roles").delete().eq("user_id", id).eq("role", "student");
+    }
+    const { error } = await supabase.from("profiles").delete().in("user_id", ids);
+    if (error) { toast.error("Gagal menghapus siswa"); return; }
+    toast.success(`${ids.length} siswa berhasil dihapus`);
+    setStudents((prev) => prev.filter((s) => !ids.includes(s.user_id)));
+    setDeleteAllConfirm(false);
+  };
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -217,7 +263,7 @@ const StudentManager = () => {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">Kelola Siswa</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={loading}>
             <Upload className="h-4 w-4" /> Import CSV
           </Button>
@@ -226,6 +272,13 @@ const StudentManager = () => {
           </Button>
           <Button variant="outline" onClick={() => setShowPrint(true)} className="gap-2" disabled={filteredStudents.length === 0}>
             <Printer className="h-4 w-4" /> Cetak Kartu
+          </Button>
+          <Button
+            variant="destructive" className="gap-2"
+            disabled={filteredStudents.length === 0}
+            onClick={() => setDeleteAllConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus Semua ({filteredStudents.length})
           </Button>
           <Button onClick={() => setShowCreate(true)} className="gap-2 exam-gradient border-0">
             <Plus className="h-4 w-4" /> Tambah Siswa
@@ -319,9 +372,57 @@ const StudentManager = () => {
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              variant="ghost" size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+              title="Hapus siswa"
+              onClick={() => setDeleteTarget(s.user_id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         ))}
       </div>
+
+      {/* Delete one confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus Siswa?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Data siswa, semua sesi ujian, dan jawaban akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => deleteTarget && handleDeleteStudent(deleteTarget)}>
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete all confirmation */}
+      <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus {filteredStudents.length} Siswa?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua siswa yang ditampilkan ({filteredStudents.length} siswa) beserta data ujiannya akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteAll}>
+              Hapus Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <ExamCardPrinter
         open={showPrint}

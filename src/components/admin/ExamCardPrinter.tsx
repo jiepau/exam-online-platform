@@ -29,6 +29,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
   const [city, setCity] = useState("Jakarta");
   const [startNumber, setStartNumber] = useState(1);
   const [examNumbers, setExamNumbers] = useState<Record<string, string>>({});
+  const [studentRooms, setStudentRooms] = useState<Record<string, string>>({});
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const signatureInputRef = useRef<HTMLInputElement>(null);
   const printRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">Nama</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground">Kelas</th>
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground w-24">No. Ujian</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground w-28">Ruangan</th>
               </tr>
             </thead>
             <tbody>
@@ -202,6 +204,14 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                       className="h-7 w-20 text-center text-sm"
                       value={examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}
                       onChange={(e) => setExamNumbers(prev => ({ ...prev, [student.user_id]: e.target.value }))}
+                    />
+                  </td>
+                  <td className="px-3 py-1.5">
+                    <Input
+                      className="h-7 w-24 text-sm"
+                      placeholder={room || "Ruang 1"}
+                      value={studentRooms[student.user_id] ?? ""}
+                      onChange={(e) => setStudentRooms(prev => ({ ...prev, [student.user_id]: e.target.value }))}
                     />
                   </td>
                 </tr>
@@ -247,7 +257,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                       </tr>
                       <tr>
                         <td style={{ fontWeight: "bold", padding: "2px 4px" }}>Ruangan</td>
-                        <td style={{ padding: "2px 4px" }}>: {room || "-"}</td>
+                        <td style={{ padding: "2px 4px" }}>: {studentRooms[student.user_id] || room || "-"}</td>
                       </tr>
                       <tr>
                         <td style={{ fontWeight: "bold", padding: "2px 4px" }}>No. Ujian</td>
