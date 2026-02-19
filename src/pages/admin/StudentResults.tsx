@@ -1,9 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
-import { Download, Users, BookOpen, TrendingUp, CheckCircle } from "lucide-react";
+import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 interface SessionResult {
   id: string;
@@ -30,11 +33,14 @@ const calcScore = (r: SessionResult) =>
     : null;
 
 const StudentResults = () => {
+  const navigate = useNavigate();
   const [results, setResults] = useState<SessionResult[]>([]);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
 
   const exportCSV = (data: SessionResult[], filename: string) => {
     const header = ["Nama", "Kelas", "Ujian", "Mapel", "Benar", "Total", "Nilai", "Status", "Waktu Mulai"];
@@ -95,6 +101,28 @@ const StudentResults = () => {
     fetchData();
   }, []);
 
+  const handleDeleteOne = async (sessionId: string) => {
+    // Delete answers first, then session
+    await supabase.from("student_answers").delete().eq("session_id", sessionId);
+    const { error } = await supabase.from("exam_sessions").delete().eq("id", sessionId);
+    if (error) { toast.error("Gagal menghapus hasil"); return; }
+    toast.success("Hasil ujian berhasil dihapus");
+    setResults((prev) => prev.filter((r) => r.id !== sessionId));
+    setDeleteTarget(null);
+  };
+
+  const handleDeleteFiltered = async () => {
+    const ids = filtered.map((r) => r.id);
+    for (const id of ids) {
+      await supabase.from("student_answers").delete().eq("session_id", id);
+    }
+    const { error } = await supabase.from("exam_sessions").delete().in("id", ids);
+    if (error) { toast.error("Gagal menghapus hasil"); return; }
+    toast.success(`${ids.length} hasil ujian berhasil dihapus`);
+    setResults((prev) => prev.filter((r) => !ids.includes(r.id)));
+    setDeleteAllConfirm(false);
+  };
+
   const filtered = results.filter((r) => {
     if (filterClass !== "all" && r.class_id !== filterClass) return false;
     if (filterSubject !== "all" && r.exam_subject !== filterSubject) return false;
@@ -154,18 +182,27 @@ const StudentResults = () => {
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">Hasil Siswa</h2>
-        <Button
-          variant="outline" size="sm" className="gap-2"
-          disabled={filtered.length === 0}
-          onClick={() => {
-            const label = filterClass !== "all"
-              ? classes.find(c => c.id === filterClass)?.name || "kelas"
-              : filterSubject !== "all" ? filterSubject : "semua";
-            exportCSV(filtered, `hasil-ujian-${label}.csv`);
-          }}
-        >
-          <Download className="h-4 w-4" /> Export CSV
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline" size="sm" className="gap-2"
+            disabled={filtered.length === 0}
+            onClick={() => {
+              const label = filterClass !== "all"
+                ? classes.find(c => c.id === filterClass)?.name || "kelas"
+                : filterSubject !== "all" ? filterSubject : "semua";
+              exportCSV(filtered, `hasil-ujian-${label}.csv`);
+            }}
+          >
+            <Download className="h-4 w-4" /> Export CSV
+          </Button>
+          <Button
+            variant="destructive" size="sm" className="gap-2"
+            disabled={filtered.length === 0}
+            onClick={() => setDeleteAllConfirm(true)}
+          >
+            <Trash2 className="h-4 w-4" /> Hapus {filtered.length > 0 ? `(${filtered.length})` : "Semua"}
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -223,13 +260,7 @@ const StudentResults = () => {
                   <div key={c.name} className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground w-24 truncate" title={c.name}>{c.name}</span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${c.avg}%`,
-                          backgroundColor: c.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))",
-                        }}
-                      />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${c.avg}%`, backgroundColor: c.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
                     </div>
                     <span className={`text-sm font-bold w-8 text-right ${c.avg >= 70 ? "text-success" : "text-destructive"}`}>{c.avg}</span>
                     <span className="text-xs text-muted-foreground w-14 text-right">({c.count} siswa)</span>
@@ -248,13 +279,7 @@ const StudentResults = () => {
                   <div key={s.name} className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground w-24 truncate" title={s.name}>{s.name}</span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${s.avg}%`,
-                          backgroundColor: s.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))",
-                        }}
-                      />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${s.avg}%`, backgroundColor: s.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
                     </div>
                     <span className={`text-sm font-bold w-8 text-right ${s.avg >= 70 ? "text-success" : "text-destructive"}`}>{s.avg}</span>
                     <span className="text-xs text-muted-foreground w-14 text-right">({s.count} ujian)</span>
@@ -306,6 +331,7 @@ const StudentResults = () => {
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Waktu</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -313,7 +339,7 @@ const StudentResults = () => {
                 const score = calcScore(r);
                 const passed = (score ?? 0) >= 70;
                 return (
-                  <tr key={r.id} className="border-b border-border last:border-0">
+                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.class_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.exam_title}</td>
@@ -329,8 +355,24 @@ const StudentResults = () => {
                         <span className="text-xs text-warning">Berlangsung</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">
-                      {new Date(r.started_at).toLocaleString("id-ID")}
+                    <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(r.started_at).toLocaleString("id-ID")}</td>
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary"
+                          title="Lihat detail jawaban"
+                          onClick={() => navigate(`/admin/results/${r.id}`)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                          title="Hapus hasil ini"
+                          onClick={() => setDeleteTarget(r.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -339,9 +381,50 @@ const StudentResults = () => {
           </table>
         </div>
       )}
+
+      {/* Delete one confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus Hasil Ujian?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Hasil ujian siswa ini akan dihapus permanen termasuk semua data jawaban. Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => deleteTarget && handleDeleteOne(deleteTarget)}>
+              Hapus
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete all (filtered) confirmation */}
+      <AlertDialog open={deleteAllConfirm} onOpenChange={setDeleteAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus {filtered.length} Hasil Ujian?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua hasil yang ditampilkan ({filtered.length} data) akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={handleDeleteFiltered}>
+              Hapus Semua
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
 
 export default StudentResults;
+
 
