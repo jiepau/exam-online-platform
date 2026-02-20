@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -42,24 +43,31 @@ const StudentResults = () => {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
 
-  const exportCSV = (data: SessionResult[], filename: string) => {
-    const header = ["Nama", "Kelas", "Ujian", "Mapel", "Benar", "Total", "Nilai", "Status", "Waktu Mulai"];
-    const rows = data.map((r) => {
-      const score = calcScore(r);
-      return [
-        r.student_name, r.class_name, r.exam_title, r.exam_subject,
-        r.correct_answers ?? 0, r.total_questions ?? 0,
-        score ?? "-",
-        r.finished_at ? ((score ?? 0) >= 70 ? "Lulus" : "Tidak Lulus") : "Berlangsung",
-        new Date(r.started_at).toLocaleString("id-ID"),
-      ];
+  const handleExportExcel = (data: SessionResult[], label: string) => {
+    exportToExcel({
+      filename: `hasil-ujian-${label}.xlsx`,
+      sheetName: "Hasil Ujian",
+      columns: [
+        { header: "Nama", key: "nama", width: 25 },
+        { header: "Kelas", key: "kelas", width: 15 },
+        { header: "Ujian", key: "ujian", width: 25 },
+        { header: "Mapel", key: "mapel", width: 15 },
+        { header: "Benar", key: "benar", width: 10 },
+        { header: "Total", key: "total", width: 10 },
+        { header: "Nilai", key: "nilai", width: 10 },
+        { header: "Status", key: "status", width: 15 },
+        { header: "Waktu Mulai", key: "waktu", width: 22 },
+      ],
+      rows: data.map((r) => {
+        const score = calcScore(r);
+        return {
+          nama: r.student_name, kelas: r.class_name, ujian: r.exam_title, mapel: r.exam_subject,
+          benar: r.correct_answers ?? 0, total: r.total_questions ?? 0, nilai: score ?? "-",
+          status: r.finished_at ? ((score ?? 0) >= 70 ? "Lulus" : "Tidak Lulus") : "Berlangsung",
+          waktu: new Date(r.started_at).toLocaleString("id-ID"),
+        };
+      }),
     });
-    const csv = [header, ...rows].map((r) => r.map((v) => `"${v}"`).join(",")).join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -190,10 +198,10 @@ const StudentResults = () => {
               const label = filterClass !== "all"
                 ? classes.find(c => c.id === filterClass)?.name || "kelas"
                 : filterSubject !== "all" ? filterSubject : "semua";
-              exportCSV(filtered, `hasil-ujian-${label}.csv`);
+              handleExportExcel(filtered, label);
             }}
           >
-            <Download className="h-4 w-4" /> Export CSV
+            <Download className="h-4 w-4" /> Export Excel
           </Button>
           <Button
             variant="destructive" size="sm" className="gap-2"

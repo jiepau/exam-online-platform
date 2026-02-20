@@ -1,34 +1,24 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Users, Upload, FileText, Printer, Trash2, AlertTriangle } from "lucide-react";
+import { Plus, Users, Upload, FileText, Printer, Trash2, AlertTriangle, Download, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import ExamCardPrinter from "@/components/admin/ExamCardPrinter";
+import { exportToExcel } from "@/lib/exportExcel";
 
 interface ClassItem {
   id: string;
@@ -264,22 +254,54 @@ const StudentManager = () => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">Kelola Siswa</h2>
         <div className="flex gap-2 flex-wrap justify-end">
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()} className="gap-2" disabled={loading}>
-            <Upload className="h-4 w-4" /> Import CSV
-          </Button>
-          <Button variant="outline" onClick={downloadTemplate} className="gap-2">
-            <FileText className="h-4 w-4" /> Template
-          </Button>
-          <Button variant="outline" onClick={() => setShowPrint(true)} className="gap-2" disabled={filteredStudents.length === 0}>
-            <Printer className="h-4 w-4" /> Cetak Kartu
-          </Button>
-          <Button
-            variant="destructive" className="gap-2"
-            disabled={filteredStudents.length === 0}
-            onClick={() => setDeleteAllConfirm(true)}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus Semua ({filteredStudents.length})
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <MoreVertical className="h-4 w-4" /> Menu
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => fileInputRef.current?.click()} disabled={loading}>
+                <Upload className="h-4 w-4 mr-2" /> Import CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={downloadTemplate}>
+                <FileText className="h-4 w-4 mr-2" /> Download Template
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  exportToExcel({
+                    filename: `data-siswa-${filterClass !== "all" ? classes.find(c => c.id === filterClass)?.name || "kelas" : "semua"}.xlsx`,
+                    sheetName: "Data Siswa",
+                    columns: [
+                      { header: "Nama Lengkap", key: "nama", width: 28 },
+                      { header: "NISN", key: "nisn", width: 18 },
+                      { header: "Kelas", key: "kelas", width: 15 },
+                      { header: "Tanggal Daftar", key: "tanggal", width: 18 },
+                    ],
+                    rows: filteredStudents.map((s) => ({
+                      nama: s.full_name,
+                      nisn: s.nisn || "-",
+                      kelas: getClassName(s.class_id),
+                      tanggal: new Date(s.created_at).toLocaleDateString("id-ID"),
+                    })),
+                  });
+                }}
+                disabled={filteredStudents.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" /> Export Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowPrint(true)} disabled={filteredStudents.length === 0}>
+                <Printer className="h-4 w-4 mr-2" /> Cetak Kartu Ujian
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={() => setDeleteAllConfirm(true)}
+                disabled={filteredStudents.length === 0}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Hapus Semua ({filteredStudents.length})
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={() => setShowCreate(true)} className="gap-2 exam-gradient border-0">
             <Plus className="h-4 w-4" /> Tambah Siswa
           </Button>
