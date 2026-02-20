@@ -206,6 +206,27 @@ export type Database = {
           },
         ]
       }
+      rooms: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       student_answers: {
         Row: {
           id: string
@@ -248,6 +269,35 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "exam_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      student_room_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          room_id: string
+          student_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          room_id: string
+          student_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          room_id?: string
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_room_assignments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
