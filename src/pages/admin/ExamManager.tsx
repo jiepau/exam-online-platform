@@ -24,6 +24,7 @@ interface Exam {
   token: string;
   is_active: boolean;
   created_at: string;
+  academic_year: string | null;
 }
 
 interface QuestionForm {
@@ -42,6 +43,7 @@ const ExamManager = () => {
   const [subject, setSubject] = useState("");
   const [duration, setDuration] = useState(60);
   const [token, setToken] = useState("");
+  const [academicYear, setAcademicYear] = useState("");
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
@@ -62,6 +64,7 @@ const ExamManager = () => {
     setSubject("");
     setDuration(60);
     setToken("");
+    setAcademicYear("");
     setEditingExam(null);
   };
 
@@ -75,7 +78,7 @@ const ExamManager = () => {
     setLoading(true);
 
     if (editingExam) {
-      const { error } = await supabase.from("exams").update({ title, subject, duration, token }).eq("id", editingExam.id);
+      const { error } = await supabase.from("exams").update({ title, subject, duration, token, academic_year: academicYear || null }).eq("id", editingExam.id);
       if (error) toast.error(error.message);
       else {
         toast.success("Ujian berhasil diperbarui");
@@ -89,6 +92,7 @@ const ExamManager = () => {
         subject,
         duration,
         token,
+        academic_year: academicYear || null,
         created_by: user?.id,
       });
       if (error) toast.error(error.message);
@@ -124,6 +128,7 @@ const ExamManager = () => {
     setSubject(exam.subject);
     setDuration(exam.duration);
     setToken(exam.token);
+    setAcademicYear(exam.academic_year || "");
     setShowCreate(true);
   };
 
@@ -368,6 +373,10 @@ D. Pasar
               <label className="mb-1 block text-sm font-medium">Mata Pelajaran</label>
               <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Bahasa Indonesia" />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Tahun Ajaran</label>
+              <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} placeholder="2024/2025" />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium">Durasi (menit)</label>
@@ -533,7 +542,7 @@ D. Pasar
             <div>
               <h3 className="font-semibold text-foreground">{exam.title}</h3>
               <p className="text-sm text-muted-foreground">
-                {exam.subject} • {exam.duration} menit • Token:{" "}
+                {exam.subject} • {exam.duration} menit{exam.academic_year ? ` • TA ${exam.academic_year}` : ""} • Token:{" "}
                 <span className="font-mono font-bold text-primary">{exam.token}</span>
               </p>
             </div>

@@ -1,0 +1,1 @@
+ALTER TABLE public.exams ADD COLUMN academic_year text DEFAULT NULL;

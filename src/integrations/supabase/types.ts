@@ -78,6 +78,7 @@ export type Database = {
       }
       exams: {
         Row: {
+          academic_year: string | null
           created_at: string
           created_by: string | null
           duration: number
@@ -89,6 +90,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          academic_year?: string | null
           created_at?: string
           created_by?: string | null
           duration?: number
@@ -100,6 +102,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          academic_year?: string | null
           created_at?: string
           created_by?: string | null
           duration?: number
