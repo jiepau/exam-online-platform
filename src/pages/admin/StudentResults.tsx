@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -40,6 +41,7 @@ const StudentResults = () => {
   const [subjects, setSubjects] = useState<string[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
 
@@ -134,6 +136,10 @@ const StudentResults = () => {
   const filtered = results.filter((r) => {
     if (filterClass !== "all" && r.class_id !== filterClass) return false;
     if (filterSubject !== "all" && r.exam_subject !== filterSubject) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!r.student_name.toLowerCase().includes(q) && !r.exam_title.toLowerCase().includes(q)) return false;
+    }
     return true;
   });
 
@@ -301,6 +307,12 @@ const StudentResults = () => {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 mb-4">
+        <Input
+          placeholder="Cari nama siswa atau ujian..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-64"
+        />
         <div className="w-48">
           <Select value={filterClass} onValueChange={setFilterClass}>
             <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>

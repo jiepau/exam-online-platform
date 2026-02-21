@@ -37,6 +37,7 @@ const StudentManager = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [filterClass, setFilterClass] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [fullName, setFullName] = useState("");
   const [nisn, setNisn] = useState("");
@@ -80,11 +81,15 @@ const StudentManager = () => {
     fetchStudents();
   }, []);
 
-  const filteredStudents = filterClass === "all"
-    ? students
-    : filterClass === "none"
-      ? students.filter((s) => !s.class_id)
-      : students.filter((s) => s.class_id === filterClass);
+  const filteredStudents = students.filter((s) => {
+    if (filterClass === "none" && s.class_id) return false;
+    if (filterClass !== "all" && filterClass !== "none" && s.class_id !== filterClass) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!s.full_name.toLowerCase().includes(q) && !(s.nisn || "").toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
 
   const getClassName = (classId: string | null) => {
     if (!classId) return "Belum diatur";
@@ -309,9 +314,14 @@ const StudentManager = () => {
         <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={handleImport} className="hidden" />
       </div>
 
-      {/* Class filter */}
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-sm text-muted-foreground">Filter Kelas:</span>
+      {/* Search & Class filter */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Input
+          placeholder="Cari nama atau NISN..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-64"
+        />
         <Select value={filterClass} onValueChange={setFilterClass}>
           <SelectTrigger className="w-48">
             <SelectValue />
