@@ -31,6 +31,7 @@ interface ExamCardPrinterProps {
 
 const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCardPrinterProps) => {
   const [examTitle, setExamTitle] = useState("PENILAIAN AKHIR SEMESTER (PAS)");
+  const [academicYear, setAcademicYear] = useState("2024/2025");
   const [examDate, setExamDate] = useState("");
   const [principalName, setPrincipalName] = useState("");
   const [principalNip, setPrincipalNip] = useState("");
@@ -197,15 +198,15 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           .card-title { text-align: center; flex: 1; }
           .card-title h3 { font-size: 11px; font-weight: bold; margin-bottom: 1px; color: #1a6e3a; }
           .card-title p { font-size: 9px; color: #2d8a4e; }
+          .card-exam-title-wrap { text-align: center; margin: 4px 0 6px; }
           .card-exam-title {
-            text-align: center;
             font-weight: bold;
             font-size: 12px;
-            margin: 4px 0 6px;
             text-decoration: underline;
             color: #1a6e3a;
             letter-spacing: 0.5px;
           }
+          .card-academic-year { font-size: 10px; color: #2d8a4e; margin-top: 1px; }
           .card-body table { width: 100%; font-size: 11px; }
           .card-body td { padding: 2px 4px; vertical-align: top; }
           .card-body td:first-child { width: 80px; font-weight: bold; color: #333; }
@@ -248,6 +249,10 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           <div>
             <Label>Judul Ujian</Label>
             <Input value={examTitle} onChange={(e) => setExamTitle(e.target.value)} placeholder="PENILAIAN AKHIR SEMESTER" />
+          </div>
+          <div>
+            <Label>Tahun Ajaran</Label>
+            <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} placeholder="2024/2025" />
           </div>
           <div>
             <Label>Tanggal Ujian</Label>
@@ -471,8 +476,11 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                         <div style={{ fontSize: "9px", color: "#2d8a4e" }}>KARTU PESERTA UJIAN</div>
                       </div>
                     </div>
-                    <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12px", margin: "4px 0 6px", textDecoration: "underline", color: "#1a6e3a", letterSpacing: "0.5px" }}>
-                      {examTitle}
+                    <div style={{ textAlign: "center", margin: "4px 0 6px" }}>
+                      <div style={{ fontWeight: "bold", fontSize: "12px", textDecoration: "underline", color: "#1a6e3a", letterSpacing: "0.5px" }}>
+                        {examTitle}
+                      </div>
+                      {academicYear && <div style={{ fontSize: "10px", color: "#2d8a4e", marginTop: "1px" }}>Tahun Ajaran {academicYear}</div>}
                     </div>
                     <table style={{ width: "100%", fontSize: "11px" }}>
                       <tbody>
