@@ -150,17 +150,76 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: 'Times New Roman', serif; font-size: 11px; }
           .cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-          .card { border: 1.5px solid #000; padding: 10px; page-break-inside: avoid; break-inside: avoid; }
-          .card-header { display: flex; align-items: center; gap: 8px; border-bottom: 1.5px solid #000; padding-bottom: 6px; margin-bottom: 6px; }
+          .card {
+            border: 2.5px solid #1a6e3a;
+            padding: 12px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f0faf4 0%, #ffffff 40%, #f0faf4 100%);
+          }
+          .card::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(26,110,58,0.08) 0%, transparent 70%);
+            border-radius: 50%;
+          }
+          .card::after {
+            content: '';
+            position: absolute;
+            bottom: -20px;
+            left: -20px;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, rgba(26,110,58,0.06) 0%, transparent 70%);
+            border-radius: 50%;
+          }
+          .card-inner { position: relative; z-index: 1; }
+          .card-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 2px solid #1a6e3a;
+            padding-bottom: 6px;
+            margin-bottom: 6px;
+            background: linear-gradient(90deg, rgba(26,110,58,0.05) 0%, transparent 100%);
+            margin: -12px -12px 8px -12px;
+            padding: 8px 12px;
+            border-radius: 6px 6px 0 0;
+          }
           .card-logo { width: 40px; height: 40px; object-fit: contain; }
           .card-title { text-align: center; flex: 1; }
-          .card-title h3 { font-size: 11px; font-weight: bold; margin-bottom: 1px; }
-          .card-title p { font-size: 9px; }
-          .card-exam-title { text-align: center; font-weight: bold; font-size: 12px; margin: 4px 0; text-decoration: underline; }
+          .card-title h3 { font-size: 11px; font-weight: bold; margin-bottom: 1px; color: #1a6e3a; }
+          .card-title p { font-size: 9px; color: #2d8a4e; }
+          .card-exam-title {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            margin: 4px 0 6px;
+            text-decoration: underline;
+            color: #1a6e3a;
+            letter-spacing: 0.5px;
+          }
           .card-body table { width: 100%; font-size: 11px; }
           .card-body td { padding: 2px 4px; vertical-align: top; }
-          .card-body td:first-child { width: 80px; font-weight: bold; }
+          .card-body td:first-child { width: 80px; font-weight: bold; color: #333; }
           .card-footer { margin-top: 8px; text-align: right; font-size: 10px; }
+          .corner-accent {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-color: #1a6e3a;
+          }
+          .corner-tl { top: 3px; left: 3px; border-top: 2px solid; border-left: 2px solid; border-radius: 4px 0 0 0; }
+          .corner-tr { top: 3px; right: 3px; border-top: 2px solid; border-right: 2px solid; border-radius: 0 4px 0 0; }
+          .corner-bl { bottom: 3px; left: 3px; border-bottom: 2px solid; border-left: 2px solid; border-radius: 0 0 0 4px; }
+          .corner-br { bottom: 3px; right: 3px; border-bottom: 2px solid; border-right: 2px solid; border-radius: 0 0 4px 0; }
           .signature-area { height: 50px; display: flex; align-items: flex-end; justify-content: center; }
           .signature-img { max-height: 45px; max-width: 100px; }
           .principal-name { font-weight: bold; text-decoration: underline; }
@@ -378,34 +437,61 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           <div ref={printRef}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
               {studentsToPrint.map((student, index) => (
-                <div key={student.user_id} style={{ border: "1.5px solid #000", padding: "10px", breakInside: "avoid", fontSize: "11px", fontFamily: "'Times New Roman', serif" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", borderBottom: "1.5px solid #000", paddingBottom: "6px", marginBottom: "6px" }}>
-                    <img src={logoMadrasah} alt="Logo" style={{ width: "40px", height: "40px", objectFit: "contain" }} />
-                    <div style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontSize: "11px", fontWeight: "bold" }}>MTS AL WATHONIYAH 43</div>
-                      <div style={{ fontSize: "9px" }}>KARTU PESERTA UJIAN</div>
+                <div key={student.user_id} style={{
+                  border: "2.5px solid #1a6e3a",
+                  padding: "12px",
+                  breakInside: "avoid",
+                  fontSize: "11px",
+                  fontFamily: "'Times New Roman', serif",
+                  position: "relative",
+                  overflow: "hidden",
+                  borderRadius: "8px",
+                  background: "linear-gradient(135deg, #f0faf4 0%, #ffffff 40%, #f0faf4 100%)"
+                }}>
+                  {/* Corner accents */}
+                  <div style={{ position: "absolute", top: 3, left: 3, width: 20, height: 20, borderTop: "2px solid #1a6e3a", borderLeft: "2px solid #1a6e3a", borderRadius: "4px 0 0 0" }} />
+                  <div style={{ position: "absolute", top: 3, right: 3, width: 20, height: 20, borderTop: "2px solid #1a6e3a", borderRight: "2px solid #1a6e3a", borderRadius: "0 4px 0 0" }} />
+                  <div style={{ position: "absolute", bottom: 3, left: 3, width: 20, height: 20, borderBottom: "2px solid #1a6e3a", borderLeft: "2px solid #1a6e3a", borderRadius: "0 0 0 4px" }} />
+                  <div style={{ position: "absolute", bottom: 3, right: 3, width: 20, height: 20, borderBottom: "2px solid #1a6e3a", borderRight: "2px solid #1a6e3a", borderRadius: "0 0 4px 0" }} />
+                  {/* Decorative circles */}
+                  <div style={{ position: "absolute", top: -30, right: -30, width: 80, height: 80, background: "radial-gradient(circle, rgba(26,110,58,0.08) 0%, transparent 70%)", borderRadius: "50%" }} />
+                  <div style={{ position: "absolute", bottom: -20, left: -20, width: 60, height: 60, background: "radial-gradient(circle, rgba(26,110,58,0.06) 0%, transparent 70%)", borderRadius: "50%" }} />
+
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: "8px",
+                      borderBottom: "2px solid #1a6e3a", paddingBottom: "6px", marginBottom: "8px",
+                      background: "linear-gradient(90deg, rgba(26,110,58,0.05) 0%, transparent 100%)",
+                      margin: "-12px -12px 8px -12px", padding: "8px 12px",
+                      borderRadius: "6px 6px 0 0"
+                    }}>
+                      <img src={logoMadrasah} alt="Logo" style={{ width: "40px", height: "40px", objectFit: "contain" }} />
+                      <div style={{ textAlign: "center", flex: 1 }}>
+                        <div style={{ fontSize: "11px", fontWeight: "bold", color: "#1a6e3a" }}>MTS AL WATHONIYAH 43</div>
+                        <div style={{ fontSize: "9px", color: "#2d8a4e" }}>KARTU PESERTA UJIAN</div>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12px", margin: "4px 0", textDecoration: "underline" }}>
-                    {examTitle}
-                  </div>
-                  <table style={{ width: "100%", fontSize: "11px" }}>
-                    <tbody>
-                      <tr><td style={{ width: "80px", fontWeight: "bold", padding: "2px 4px" }}>Nama</td><td style={{ padding: "2px 4px" }}>: {student.full_name}</td></tr>
-                      <tr><td style={{ fontWeight: "bold", padding: "2px 4px" }}>NISN</td><td style={{ padding: "2px 4px" }}>: {student.nisn || "-"}</td></tr>
-                      <tr><td style={{ fontWeight: "bold", padding: "2px 4px" }}>Kelas</td><td style={{ padding: "2px 4px" }}>: {getClassName(student.class_id)}</td></tr>
-                      <tr><td style={{ fontWeight: "bold", padding: "2px 4px" }}>Ruangan</td><td style={{ padding: "2px 4px" }}>: {getRoomName(student.user_id)}</td></tr>
-                      <tr><td style={{ fontWeight: "bold", padding: "2px 4px" }}>No. Ujian</td><td style={{ padding: "2px 4px" }}>: {examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}</td></tr>
-                    </tbody>
-                  </table>
-                  <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px" }}>
-                    {examDate && <div>{city}, {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>}
-                    <div>Kepala Madrasah,</div>
-                    <div style={{ height: "50px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
-                      {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
+                    <div style={{ textAlign: "center", fontWeight: "bold", fontSize: "12px", margin: "4px 0 6px", textDecoration: "underline", color: "#1a6e3a", letterSpacing: "0.5px" }}>
+                      {examTitle}
                     </div>
-                    {principalName && <div style={{ fontWeight: "bold", textDecoration: "underline" }}>{principalName}</div>}
-                    {principalNip && <div>NIP. {principalNip}</div>}
+                    <table style={{ width: "100%", fontSize: "11px" }}>
+                      <tbody>
+                        <tr><td style={{ width: "80px", fontWeight: "bold", padding: "2px 4px", color: "#333" }}>Nama</td><td style={{ padding: "2px 4px" }}>: {student.full_name}</td></tr>
+                        <tr><td style={{ fontWeight: "bold", padding: "2px 4px", color: "#333" }}>NISN</td><td style={{ padding: "2px 4px" }}>: {student.nisn || "-"}</td></tr>
+                        <tr><td style={{ fontWeight: "bold", padding: "2px 4px", color: "#333" }}>Kelas</td><td style={{ padding: "2px 4px" }}>: {getClassName(student.class_id)}</td></tr>
+                        <tr><td style={{ fontWeight: "bold", padding: "2px 4px", color: "#333" }}>Ruangan</td><td style={{ padding: "2px 4px" }}>: {getRoomName(student.user_id)}</td></tr>
+                        <tr><td style={{ fontWeight: "bold", padding: "2px 4px", color: "#333" }}>No. Ujian</td><td style={{ padding: "2px 4px" }}>: {examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}</td></tr>
+                      </tbody>
+                    </table>
+                    <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px" }}>
+                      {examDate && <div>{city}, {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>}
+                      <div>Kepala Madrasah,</div>
+                      <div style={{ height: "50px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
+                        {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
+                      </div>
+                      {principalName && <div style={{ fontWeight: "bold", textDecoration: "underline" }}>{principalName}</div>}
+                      {principalNip && <div>NIP. {principalNip}</div>}
+                    </div>
                   </div>
                 </div>
               ))}
