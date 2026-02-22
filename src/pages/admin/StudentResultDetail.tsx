@@ -107,9 +107,12 @@ const StudentResultDetail = () => {
   }, [sessionId]);
 
   const score = session?.finished_at && session?.total_questions
+    ? (session.correct_answers || 0)
+    : null;
+  const percentage = session?.finished_at && session?.total_questions
     ? Math.round(((session.correct_answers || 0) / session.total_questions) * 100)
     : null;
-  const passed = (score ?? 0) >= 70;
+  const passed = (percentage ?? 0) >= 70;
 
   return (
     <AdminLayout>

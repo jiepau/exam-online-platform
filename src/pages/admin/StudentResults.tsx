@@ -31,6 +31,11 @@ interface ClassOption {
 
 const calcScore = (r: SessionResult) =>
   r.finished_at && r.total_questions
+    ? (r.correct_answers || 0)
+    : null;
+
+const calcPercentage = (r: SessionResult) =>
+  r.finished_at && r.total_questions
     ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100)
     : null;
 
@@ -62,10 +67,11 @@ const StudentResults = () => {
       ],
       rows: data.map((r) => {
         const score = calcScore(r);
+        const pct = calcPercentage(r);
         return {
           nama: r.student_name, kelas: r.class_name, ujian: r.exam_title, mapel: r.exam_subject,
           benar: r.correct_answers ?? 0, total: r.total_questions ?? 0, nilai: score ?? "-",
-          status: r.finished_at ? ((score ?? 0) >= 70 ? "Lulus" : "Tidak Lulus") : "Berlangsung",
+          status: r.finished_at ? ((pct ?? 0) >= 70 ? "Lulus" : "Tidak Lulus") : "Berlangsung",
           waktu: new Date(r.started_at).toLocaleString("id-ID"),
         };
       }),
@@ -148,11 +154,11 @@ const StudentResults = () => {
 
   const avgScore = useMemo(() => {
     if (!finishedFiltered.length) return null;
-    const total = finishedFiltered.reduce((sum, r) => sum + (calcScore(r) ?? 0), 0);
+    const total = finishedFiltered.reduce((sum, r) => sum + (calcPercentage(r) ?? 0), 0);
     return Math.round(total / finishedFiltered.length);
   }, [finishedFiltered]);
 
-  const passCount = finishedFiltered.filter((r) => (calcScore(r) ?? 0) >= 70).length;
+  const passCount = finishedFiltered.filter((r) => (calcPercentage(r) ?? 0) >= 70).length;
   const passRate = finishedFiltered.length ? Math.round((passCount / finishedFiltered.length) * 100) : null;
 
   // Rekap per kelas (hanya jika tidak filter ke kelas tertentu)
@@ -162,7 +168,7 @@ const StudentResults = () => {
     finishedFiltered.forEach((r) => {
       const key = r.class_id || "__none__";
       if (!map.has(key)) map.set(key, { name: r.class_name, scores: [] });
-      const s = calcScore(r);
+      const s = calcPercentage(r);
       if (s !== null) map.get(key)!.scores.push(s);
     });
     return [...map.entries()]
@@ -180,7 +186,7 @@ const StudentResults = () => {
     const map = new Map<string, number[]>();
     finishedFiltered.forEach((r) => {
       if (!map.has(r.exam_subject)) map.set(r.exam_subject, []);
-      const s = calcScore(r);
+      const s = calcPercentage(r);
       if (s !== null) map.get(r.exam_subject)!.push(s);
     });
     return [...map.entries()]
@@ -357,7 +363,8 @@ const StudentResults = () => {
             <tbody>
               {filtered.map((r) => {
                 const score = calcScore(r);
-                const passed = (score ?? 0) >= 70;
+                const pct = calcPercentage(r);
+                const passed = (pct ?? 0) >= 70;
                 return (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>

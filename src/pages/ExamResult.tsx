@@ -18,8 +18,9 @@ const ExamResult = () => {
   }
 
   const { studentName, examTitle, total, correct } = state;
-  const score = Math.round((correct / total) * 100);
-  const isPassed = score >= 70;
+  const score = correct; // 1 point per correct answer
+  const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+  const isPassed = percentage >= 70;
 
   return (
     <div className="min-h-screen bg-background">

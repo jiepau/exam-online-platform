@@ -1,7 +1,8 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
 import logoMadrasah from "@/assets/logo-madrasah.png";
 
@@ -11,12 +12,14 @@ const navItems = [
   { path: "/admin/results", label: "Hasil Siswa", icon: Users },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },
   { path: "/admin/profile", label: "Profil Guru", icon: UserCog },
+  { path: "/admin/settings", label: "Pengaturan", icon: Settings },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { settings } = useAppSettings();
 
   const handleLogout = async () => {
     await signOut();
@@ -28,9 +31,9 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
       <header className="exam-gradient px-6 py-3">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoMadrasah} alt="Logo" className="h-9 w-9 object-contain" />
+            <img src={settings.school_logo_url || logoMadrasah} alt="Logo" className="h-9 w-9 object-contain" />
             <div>
-              <h1 className="text-base font-bold text-white">MTS Al Wathoniyah 43</h1>
+              <h1 className="text-base font-bold text-white">{settings.school_name}</h1>
               <p className="text-xs text-white/70">{profile?.full_name || "Guru"}</p>
             </div>
           </div>
