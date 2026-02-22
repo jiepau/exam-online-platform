@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import ExamPage from "./pages/ExamPage";
@@ -14,6 +15,7 @@ import StudentResults from "./pages/admin/StudentResults";
 import StudentManager from "./pages/admin/StudentManager";
 import ProfileEdit from "./pages/admin/ProfileEdit";
 import StudentResultDetail from "./pages/admin/StudentResultDetail";
+import Settings from "./pages/admin/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +34,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ThemeProvider>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<AuthPage />} />
@@ -43,8 +46,10 @@ const App = () => (
             <Route path="/admin/results/:sessionId" element={<AdminRoute><StudentResultDetail /></AdminRoute>} />
             <Route path="/admin/students" element={<AdminRoute><StudentManager /></AdminRoute>} />
             <Route path="/admin/profile" element={<AdminRoute><ProfileEdit /></AdminRoute>} />
+            <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </ThemeProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

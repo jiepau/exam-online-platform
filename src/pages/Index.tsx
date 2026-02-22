@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const Index = () => {
@@ -15,6 +16,7 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
+  const { settings } = useAppSettings();
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,10 +79,10 @@ const Index = () => {
       <header className="exam-gradient px-6 py-4">
         <div className="mx-auto flex max-w-6xl items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoMadrasah} alt="Logo MTS Al Wathoniyah 43" className="h-10 w-10 object-contain" />
+             <img src={settings.school_logo_url || logoMadrasah} alt="Logo" className="h-10 w-10 object-contain" />
             <div>
-              <h1 className="text-lg font-bold text-white">MTS Al Wathoniyah 43</h1>
-              <p className="text-xs text-white/70">Sistem Ujian Online</p>
+              <h1 className="text-lg font-bold text-white">{settings.school_name}</h1>
+              <p className="text-xs text-white/70">{settings.app_name}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -154,7 +156,7 @@ const Index = () => {
           {/* Right - Login Form */}
           <div className="rounded-2xl bg-card p-8 shadow-xl border border-border">
             <div className="mb-6 text-center">
-              <img src={logoMadrasah} alt="Logo MTS Al Wathoniyah 43" className="mx-auto mb-3 h-16 w-16 object-contain" />
+              <img src={settings.school_logo_url || logoMadrasah} alt="Logo" className="mx-auto mb-3 h-16 w-16 object-contain" />
               <h3 className="text-xl font-bold text-foreground">Masuk Ujian</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 Masukkan NISN, password, dan token ujian

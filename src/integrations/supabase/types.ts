@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          app_name: string
+          id: string
+          school_logo_url: string | null
+          school_name: string
+          theme: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          app_name?: string
+          id?: string
+          school_logo_url?: string | null
+          school_name?: string
+          theme?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          app_name?: string
+          id?: string
+          school_logo_url?: string | null
+          school_name?: string
+          theme?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           created_at: string

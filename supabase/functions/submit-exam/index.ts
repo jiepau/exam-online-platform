@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     questions.forEach((q, i) => {
       if (answers[String(i)] === q.correct_answer) correct++;
     });
-    const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+    const score = correct; // 1 point per correct answer
 
     // Save exam session
     const { data: session, error: sessionError } = await adminClient
