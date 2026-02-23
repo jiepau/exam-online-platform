@@ -10,11 +10,21 @@ import { useAppSettings } from "@/hooks/useAppSettings";
 import logoDefault from "@/assets/logo-madrasah.png";
 
 const THEMES = [
-  { id: "green", label: "Hijau (Madrasah)", primary: "152 72% 30%", accent: "152 72% 36%" },
-  { id: "blue", label: "Biru (Umum)", primary: "217 91% 40%", accent: "217 91% 50%" },
-  { id: "teal", label: "Teal", primary: "174 72% 30%", accent: "174 72% 40%" },
-  { id: "purple", label: "Ungu", primary: "262 72% 40%", accent: "262 72% 50%" },
-  { id: "amber", label: "Amber", primary: "38 92% 40%", accent: "38 92% 50%" },
+  { id: "green", label: "Hijau Madrasah", primary: "152 72% 30%", accent: "152 72% 36%", gradient: "linear-gradient(135deg, hsl(152 72% 28%), hsl(160 65% 35%))" },
+  { id: "blue", label: "Biru Klasik", primary: "217 91% 40%", accent: "217 91% 50%", gradient: "linear-gradient(135deg, hsl(217 91% 35%), hsl(210 85% 45%))" },
+  { id: "teal", label: "Teal", primary: "174 72% 30%", accent: "174 72% 40%", gradient: "linear-gradient(135deg, hsl(174 72% 28%), hsl(180 65% 35%))" },
+  { id: "purple", label: "Ungu", primary: "262 72% 40%", accent: "262 72% 50%", gradient: "linear-gradient(135deg, hsl(262 72% 35%), hsl(270 65% 45%))" },
+  { id: "amber", label: "Amber", primary: "38 92% 40%", accent: "38 92% 50%", gradient: "linear-gradient(135deg, hsl(38 92% 35%), hsl(45 85% 45%))" },
+  { id: "rose", label: "Rose", primary: "350 80% 45%", accent: "350 80% 55%", gradient: "linear-gradient(135deg, hsl(350 80% 40%), hsl(340 75% 50%))" },
+  { id: "indigo", label: "Indigo", primary: "234 85% 45%", accent: "234 85% 55%", gradient: "linear-gradient(135deg, hsl(234 85% 40%), hsl(245 80% 50%))" },
+  { id: "emerald", label: "Emerald", primary: "160 84% 30%", accent: "160 84% 40%", gradient: "linear-gradient(135deg, hsl(160 84% 28%), hsl(155 78% 38%))" },
+  { id: "cyan", label: "Cyan", primary: "190 90% 35%", accent: "190 90% 45%", gradient: "linear-gradient(135deg, hsl(190 90% 30%), hsl(195 85% 40%))" },
+  { id: "orange", label: "Oranye", primary: "24 95% 45%", accent: "24 95% 55%", gradient: "linear-gradient(135deg, hsl(24 95% 40%), hsl(30 90% 50%))" },
+  { id: "pink-purple", label: "🌈 Pink → Ungu", primary: "320 80% 45%", accent: "280 75% 50%", gradient: "linear-gradient(135deg, hsl(320 80% 45%), hsl(280 75% 50%))" },
+  { id: "blue-teal", label: "🌈 Biru → Teal", primary: "210 90% 40%", accent: "174 80% 38%", gradient: "linear-gradient(135deg, hsl(210 90% 40%), hsl(174 80% 38%))" },
+  { id: "sunset", label: "🌈 Sunset", primary: "15 90% 48%", accent: "340 80% 50%", gradient: "linear-gradient(135deg, hsl(40 95% 50%), hsl(15 90% 48%), hsl(340 80% 50%))" },
+  { id: "ocean", label: "🌈 Ocean", primary: "200 85% 40%", accent: "230 80% 50%", gradient: "linear-gradient(135deg, hsl(180 75% 38%), hsl(200 85% 40%), hsl(230 80% 50%))" },
+  { id: "forest", label: "🌈 Forest", primary: "140 70% 30%", accent: "80 60% 40%", gradient: "linear-gradient(135deg, hsl(140 70% 30%), hsl(100 65% 35%), hsl(80 60% 40%))" },
 ];
 
 const Settings = () => {
@@ -170,9 +180,9 @@ const Settings = () => {
               >
                 <div
                   className="h-8 w-8 rounded-full shrink-0"
-                  style={{ background: `hsl(${t.primary})` }}
+                  style={{ background: t.gradient || `hsl(${t.primary})` }}
                 />
-                <span className="text-sm font-medium text-foreground">{t.label}</span>
+                <span className="text-xs font-medium text-foreground">{t.label}</span>
               </button>
             ))}
           </div>
