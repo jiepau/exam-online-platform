@@ -64,27 +64,39 @@ const THEME_MAP: Record<string, { primary: string; accent: string; ring: string;
   },
 };
 
+const applyTheme = (themeKey: string) => {
+  const theme = THEME_MAP[themeKey] || THEME_MAP.green;
+  const root = document.documentElement;
+  root.style.setProperty("--primary", theme.primary);
+  root.style.setProperty("--accent", theme.accent);
+  root.style.setProperty("--ring", theme.ring);
+  root.style.setProperty("--exam-nav-active", theme.primary);
+  root.style.setProperty("--exam-nav-answered", theme.accent);
+  root.style.setProperty("--success", theme.accent);
+  root.style.setProperty("--success-foreground", "0 0% 100%");
+
+  const style = document.getElementById("dynamic-theme") || document.createElement("style");
+  style.id = "dynamic-theme";
+  style.textContent = `.exam-gradient { background: ${theme.gradient} !important; }`;
+  if (!document.getElementById("dynamic-theme")) {
+    document.head.appendChild(style);
+  }
+};
+
+// Apply cached theme immediately on load
+try {
+  const cached = localStorage.getItem("app_settings_cache");
+  if (cached) {
+    const parsed = JSON.parse(cached);
+    if (parsed?.theme) applyTheme(parsed.theme);
+  }
+} catch {}
+
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   const { settings } = useAppSettings();
 
   useEffect(() => {
-    const theme = THEME_MAP[settings.theme] || THEME_MAP.green;
-    const root = document.documentElement;
-    root.style.setProperty("--primary", theme.primary);
-    root.style.setProperty("--accent", theme.accent);
-    root.style.setProperty("--ring", theme.ring);
-    root.style.setProperty("--exam-nav-active", theme.primary);
-    root.style.setProperty("--exam-nav-answered", theme.accent);
-    root.style.setProperty("--success", theme.accent);
-    root.style.setProperty("--success-foreground", "0 0% 100%");
-
-    // Update gradient utility
-    const style = document.getElementById("dynamic-theme") || document.createElement("style");
-    style.id = "dynamic-theme";
-    style.textContent = `.exam-gradient { background: ${theme.gradient} !important; }`;
-    if (!document.getElementById("dynamic-theme")) {
-      document.head.appendChild(style);
-    }
+    applyTheme(settings.theme);
   }, [settings.theme]);
 
   return <>{children}</>;
