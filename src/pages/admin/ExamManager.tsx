@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, FileText, ImagePlus } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, FileText, ImagePlus, Download } from "lucide-react";
 import mammoth from "mammoth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import MathText from "@/components/exam/MathText";
+import { exportToExcel } from "@/lib/exportExcel";
 
 interface Exam {
   id: string;
@@ -343,6 +344,42 @@ D. Pasar
     setLoading(false);
   };
 
+  const handleExportQuestions = async (exam: Exam) => {
+    const { data } = await supabase
+      .from("questions")
+      .select("*")
+      .eq("exam_id", exam.id)
+      .order("sort_order");
+    if (!data || data.length === 0) {
+      toast.error("Tidak ada soal untuk diexport");
+      return;
+    }
+    const rows = data.map((q: any, i: number) => ({
+      no: i + 1,
+      question: q.question_text,
+      optA: (q.options as string[])[0] || "",
+      optB: (q.options as string[])[1] || "",
+      optC: (q.options as string[])[2] || "",
+      optD: (q.options as string[])[3] || "",
+      answer: String.fromCharCode(65 + q.correct_answer),
+    }));
+    await exportToExcel({
+      filename: `Soal - ${exam.title}.xlsx`,
+      sheetName: "Soal & Kunci Jawaban",
+      columns: [
+        { header: "No", key: "no", width: 5 },
+        { header: "Soal", key: "question", width: 50 },
+        { header: "A", key: "optA", width: 25 },
+        { header: "B", key: "optB", width: 25 },
+        { header: "C", key: "optC", width: 25 },
+        { header: "D", key: "optD", width: 25 },
+        { header: "Kunci Jawaban", key: "answer", width: 14 },
+      ],
+      rows,
+    });
+    toast.success("Soal berhasil diexport");
+  };
+
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-6">
@@ -554,10 +591,13 @@ D. Pasar
                   <ToggleLeft className="h-5 w-5 text-muted-foreground" />
                 )}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => openQuestions(exam.id)}>
+              <Button variant="ghost" size="sm" onClick={() => openQuestions(exam.id)} title="Kelola Soal">
                 <Eye className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleEditExam(exam)}>
+              <Button variant="ghost" size="sm" onClick={() => handleExportQuestions(exam)} title="Export Soal & Kunci">
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleEditExam(exam)} title="Edit Ujian">
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button variant="ghost" size="sm" onClick={() => handleDelete(exam.id)} className="text-destructive">

@@ -17,11 +17,22 @@ const DEFAULT_SETTINGS: AppSettings = {
   theme: "green",
 };
 
-let cachedSettings: AppSettings | null = null;
+const STORAGE_KEY = "app_settings_cache";
+
+const loadCached = (): AppSettings | null => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+};
+
+let cachedSettings: AppSettings | null = loadCached();
 let cacheListeners: Array<(s: AppSettings) => void> = [];
 
 const notifyListeners = (s: AppSettings) => {
   cachedSettings = s;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
   cacheListeners.forEach((fn) => fn(s));
 };
 
