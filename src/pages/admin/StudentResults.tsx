@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
@@ -78,44 +78,54 @@ const StudentResults = () => {
     });
   };
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchData = async () => {
+    const { data: classData } = await supabase.from("classes").select("id, name").order("sort_order");
+    setClasses(classData || []);
+
+    const { data: sessions } = await supabase
+      .from("exam_sessions")
+      .select("*, exams(title, subject)")
+      .order("started_at", { ascending: false });
+
+    if (sessions) {
+      const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
+      const { data: profiles } = await supabase
+        .from("profiles").select("user_id, full_name, class_id").in("user_id", studentIds);
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+      const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
+
+      const mapped = sessions.map((s: any) => {
+        const profile = profileMap.get(s.student_id);
+        return {
+          id: s.id, score: s.score, total_questions: s.total_questions,
+          correct_answers: s.correct_answers, started_at: s.started_at,
+          finished_at: s.finished_at,
+          exam_title: s.exams?.title || "Unknown",
+          exam_subject: s.exams?.subject || "Unknown",
+          student_name: profile?.full_name || "Unknown",
+          class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
+          class_id: profile?.class_id || null,
+        };
+      });
+
+      setResults(mapped);
+      setSubjects([...new Set(mapped.map((r) => r.exam_subject))].sort());
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const { data: classData } = await supabase.from("classes").select("id, name").order("sort_order");
-      setClasses(classData || []);
-
-      const { data: sessions } = await supabase
-        .from("exam_sessions")
-        .select("*, exams(title, subject)")
-        .order("started_at", { ascending: false });
-
-      if (sessions) {
-        const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
-        const { data: profiles } = await supabase
-          .from("profiles").select("user_id, full_name, class_id").in("user_id", studentIds);
-
-        const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
-        const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
-
-        const mapped = sessions.map((s: any) => {
-          const profile = profileMap.get(s.student_id);
-          return {
-            id: s.id, score: s.score, total_questions: s.total_questions,
-            correct_answers: s.correct_answers, started_at: s.started_at,
-            finished_at: s.finished_at,
-            exam_title: s.exams?.title || "Unknown",
-            exam_subject: s.exams?.subject || "Unknown",
-            student_name: profile?.full_name || "Unknown",
-            class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
-            class_id: profile?.class_id || null,
-          };
-        });
-
-        setResults(mapped);
-        setSubjects([...new Set(mapped.map((r) => r.exam_subject))].sort());
-      }
-    };
     fetchData();
   }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchData();
+    setRefreshing(false);
+    toast.success("Data berhasil diperbarui");
+  };
 
   const handleDeleteOne = async (sessionId: string) => {
     // Delete answers first, then session
@@ -203,6 +213,13 @@ const StudentResults = () => {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">Hasil Siswa</h2>
         <div className="flex gap-2">
+          <Button
+            variant="outline" size="sm" className="gap-2"
+            onClick={handleRefresh}
+            disabled={refreshing}
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+          </Button>
           <Button
             variant="outline" size="sm" className="gap-2"
             disabled={filtered.length === 0}
