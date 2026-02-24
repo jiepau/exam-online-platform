@@ -30,14 +30,10 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 const App = () => {
-  const [showSplash, setShowSplash] = useState(() => {
-    const shown = sessionStorage.getItem("splash_shown");
-    return !shown;
-  });
+  const [showSplash, setShowSplash] = useState(true);
 
   const handleSplashFinish = useCallback(() => {
     setShowSplash(false);
-    sessionStorage.setItem("splash_shown", "1");
   }, []);
 
   return (

@@ -5,12 +5,17 @@ import logoMadrasah from "@/assets/logo-madrasah.png";
 const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
   const { settings } = useAppSettings();
   const [phase, setPhase] = useState<"enter" | "show" | "exit">("enter");
+  const [barWidth, setBarWidth] = useState(0);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase("show"), 100);
-    const t2 = setTimeout(() => setPhase("exit"), 2200);
-    const t3 = setTimeout(onFinish, 2800);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    // Use requestAnimationFrame to ensure the initial 0% renders first
+    const raf = requestAnimationFrame(() => {
+      setPhase("show");
+      setBarWidth(100);
+    });
+    const t2 = setTimeout(() => setPhase("exit"), 2500);
+    const t3 = setTimeout(onFinish, 3100);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t2); clearTimeout(t3); };
   }, [onFinish]);
 
   return (
@@ -65,10 +70,13 @@ const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
         </p>
 
         {/* Loading bar */}
-        <div className="mt-8 h-1 w-48 overflow-hidden rounded-full bg-white/20">
+        <div className="mt-8 h-1.5 w-48 overflow-hidden rounded-full bg-white/20">
           <div
-            className="h-full rounded-full bg-white/80 transition-all duration-[2000ms] ease-out"
-            style={{ width: phase === "enter" ? "0%" : "100%" }}
+            className="h-full rounded-full bg-white/90 shadow-[0_0_8px_rgba(255,255,255,0.5)]"
+            style={{ 
+              width: `${barWidth}%`,
+              transition: 'width 2300ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
           />
         </div>
 
