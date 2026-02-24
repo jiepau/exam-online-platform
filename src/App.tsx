@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import SplashScreen from "@/components/SplashScreen";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import ExamPage from "./pages/ExamPage";
@@ -27,33 +29,46 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <ThemeProvider>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/exam" element={<ExamPage />} />
-            <Route path="/result" element={<ExamResult />} />
-            <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
-            <Route path="/admin/exams" element={<AdminRoute><ExamManager /></AdminRoute>} />
-            <Route path="/admin/results" element={<AdminRoute><StudentResults /></AdminRoute>} />
-            <Route path="/admin/results/:sessionId" element={<AdminRoute><StudentResultDetail /></AdminRoute>} />
-            <Route path="/admin/students" element={<AdminRoute><StudentManager /></AdminRoute>} />
-            <Route path="/admin/profile" element={<AdminRoute><ProfileEdit /></AdminRoute>} />
-            <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </ThemeProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [showSplash, setShowSplash] = useState(() => {
+    const shown = sessionStorage.getItem("splash_shown");
+    return !shown;
+  });
+
+  const handleSplashFinish = useCallback(() => {
+    setShowSplash(false);
+    sessionStorage.setItem("splash_shown", "1");
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
+        <BrowserRouter>
+          <AuthProvider>
+            <ThemeProvider>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<AuthPage />} />
+              <Route path="/exam" element={<ExamPage />} />
+              <Route path="/result" element={<ExamResult />} />
+              <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+              <Route path="/admin/exams" element={<AdminRoute><ExamManager /></AdminRoute>} />
+              <Route path="/admin/results" element={<AdminRoute><StudentResults /></AdminRoute>} />
+              <Route path="/admin/results/:sessionId" element={<AdminRoute><StudentResultDetail /></AdminRoute>} />
+              <Route path="/admin/students" element={<AdminRoute><StudentManager /></AdminRoute>} />
+              <Route path="/admin/profile" element={<AdminRoute><ProfileEdit /></AdminRoute>} />
+              <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </ThemeProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

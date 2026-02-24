@@ -141,6 +141,55 @@ const ExamPage = () => {
     handleSubmitFn();
   }, [handleSubmitFn]);
 
+  const [studentProfile, setStudentProfile] = useState<{
+    full_name: string;
+    nisn: string | null;
+    class_name: string;
+    room_name: string;
+  } | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Fetch student detail for confirmation screen
+  useEffect(() => {
+    if (!state?.examId) return;
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, nisn, class_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!profile) return;
+
+      let className = "-";
+      if (profile.class_id) {
+        const { data: cls } = await supabase.from("classes").select("name").eq("id", profile.class_id).maybeSingle();
+        if (cls) className = cls.name;
+      }
+
+      let roomName = "-";
+      const { data: roomAssign } = await supabase
+        .from("student_room_assignments")
+        .select("room_id")
+        .eq("student_id", user.id)
+        .maybeSingle();
+      if (roomAssign) {
+        const { data: room } = await supabase.from("rooms").select("name").eq("id", roomAssign.room_id).maybeSingle();
+        if (room) roomName = room.name;
+      }
+
+      setStudentProfile({
+        full_name: profile.full_name,
+        nisn: profile.nisn,
+        class_name: className,
+        room_name: roomName,
+      });
+      setShowConfirm(true);
+    };
+    fetchProfile();
+  }, [state]);
+
   const handleStartExam = async () => {
     await enterFullscreen();
     setExamStarted(true);
@@ -161,6 +210,42 @@ const ExamPage = () => {
       <div className="flex min-h-screen flex-col items-center justify-center text-muted-foreground gap-4">
         <p>Belum ada soal untuk ujian ini.</p>
         <Button onClick={() => navigate("/")} variant="outline">Kembali</Button>
+      </div>
+    );
+  }
+
+  // Student detail confirmation screen
+  if (showConfirm && studentProfile && !examStarted && questions.length > 0) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="w-full max-w-md rounded-2xl bg-card p-8 shadow-xl border border-border text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl exam-gradient">
+            <GraduationCap className="h-8 w-8 text-white" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">Konfirmasi Data Peserta</h2>
+          <p className="text-sm text-muted-foreground mb-4">Pastikan data berikut sudah benar sebelum memulai ujian.</p>
+
+          <div className="text-left rounded-xl border border-border bg-muted/30 p-4 mb-4 space-y-2">
+            {[
+              { label: "Nama", value: studentProfile.full_name },
+              { label: "NISN", value: studentProfile.nisn || "-" },
+              { label: "Kelas", value: studentProfile.class_name },
+              { label: "Ruangan", value: studentProfile.room_name },
+              { label: "Ujian", value: examTitle },
+              { label: "Mata Pelajaran", value: examSubject },
+              { label: "Durasi", value: `${examDuration} menit` },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex justify-between text-sm">
+                <span className="font-medium text-muted-foreground">{label}</span>
+                <span className="font-semibold text-foreground">{value}</span>
+              </div>
+            ))}
+          </div>
+
+          <Button onClick={() => setShowConfirm(false)} className="w-full gap-2 exam-gradient border-0 h-12 text-base">
+            Data Sudah Benar, Lanjutkan
+          </Button>
+        </div>
       </div>
     );
   }

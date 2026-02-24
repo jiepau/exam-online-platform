@@ -211,6 +211,7 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
           .card-body td { padding: 2px 4px; vertical-align: top; }
           .card-body td:first-child { width: 80px; font-weight: bold; color: #333; }
           .card-footer { margin-top: 8px; text-align: right; font-size: 10px; }
+          .card-no-footer .card { padding-bottom: 8px; }
           .corner-accent {
             position: absolute;
             width: 20px;
@@ -491,15 +492,19 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
                         <tr><td style={{ fontWeight: "bold", padding: "2px 4px", color: "#333" }}>No. Ujian</td><td style={{ padding: "2px 4px" }}>: {examNumbers[student.user_id] ?? String(startNumber + index).padStart(2, "0")}</td></tr>
                       </tbody>
                     </table>
-                    <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px" }}>
-                      {examDate && <div>{city}, {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>}
-                      <div>Kepala Madrasah,</div>
-                      <div style={{ height: "50px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
-                        {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
+                    {(examDate || principalName || signatureUrl) && (
+                      <div style={{ marginTop: "8px", textAlign: "right", fontSize: "10px" }}>
+                        {examDate && <div>{city}, {new Date(examDate).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>}
+                        {principalName && <div>Kepala Madrasah,</div>}
+                        {(signatureUrl || principalName) && (
+                          <div style={{ height: "50px", display: "flex", alignItems: "flex-end", justifyContent: "flex-end" }}>
+                            {signatureUrl && <img src={signatureUrl} alt="TTD" style={{ maxHeight: "45px", maxWidth: "100px" }} />}
+                          </div>
+                        )}
+                        {principalName && <div style={{ fontWeight: "bold", textDecoration: "underline" }}>{principalName}</div>}
+                        {principalNip && <div>NIP. {principalNip}</div>}
                       </div>
-                      {principalName && <div style={{ fontWeight: "bold", textDecoration: "underline" }}>{principalName}</div>}
-                      {principalNip && <div>NIP. {principalNip}</div>}
-                    </div>
+                    )}
                   </div>
                 </div>
               ))}
