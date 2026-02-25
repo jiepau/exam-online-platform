@@ -30,6 +30,7 @@ interface Student {
   full_name: string;
   nisn: string | null;
   class_id: string | null;
+  exam_number: string | null;
   created_at: string;
 }
 
@@ -68,7 +69,7 @@ const StudentManager = () => {
     const ids = roles.map((r) => r.user_id);
     let query = supabase
       .from("profiles")
-      .select("user_id, full_name, nisn, class_id, created_at")
+      .select("user_id, full_name, nisn, class_id, exam_number, created_at")
       .in("user_id", ids)
       .order("created_at", { ascending: false });
 
@@ -129,6 +130,20 @@ const StudentManager = () => {
       }
     }
     setLoading(false);
+  };
+
+  const handleExamNumberChange = async (studentUserId: string, examNumber: string) => {
+    const { error } = await supabase
+      .from("profiles")
+      .update({ exam_number: examNumber || null })
+      .eq("user_id", studentUserId);
+
+    if (error) {
+      toast.error("Gagal menyimpan nomor ujian");
+    } else {
+      toast.success("Nomor ujian berhasil disimpan");
+      setStudents((prev) => prev.map((s) => s.user_id === studentUserId ? { ...s, exam_number: examNumber || null } : s));
+    }
   };
 
   const handleClassChange = async (studentUserId: string, classId: string) => {
@@ -393,6 +408,16 @@ const StudentManager = () => {
                 NISN: <span className="font-mono font-bold text-primary">{s.nisn || "-"}</span> • {new Date(s.created_at).toLocaleDateString("id-ID")}
               </p>
             </div>
+            <Input
+              placeholder="No. Ujian"
+              defaultValue={s.exam_number || ""}
+              className="w-24 text-xs font-mono"
+              onBlur={(e) => {
+                const val = e.target.value.trim();
+                if (val !== (s.exam_number || "")) handleExamNumberChange(s.user_id, val);
+              }}
+              onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            />
             <Select value={s.class_id || "none"} onValueChange={(val) => handleClassChange(s.user_id, val)}>
               <SelectTrigger className="w-36 text-xs">
                 <SelectValue />
