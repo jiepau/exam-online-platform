@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Users, Upload, FileText, Printer, Trash2, AlertTriangle, Download, MoreVertical } from "lucide-react";
+import { Plus, Users, Upload, FileText, Printer, Trash2, AlertTriangle, Download, MoreVertical, Hash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,10 @@ const StudentManager = () => {
   const [showPrint, setShowPrint] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+  const [showGenerateExamNumber, setShowGenerateExamNumber] = useState(false);
+  const [examNumberPrefix, setExamNumberPrefix] = useState("");
+  const [examNumberStartFrom, setExamNumberStartFrom] = useState("1");
+  const [examNumberDigits, setExamNumberDigits] = useState("3");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchClasses = async () => {
@@ -269,6 +273,46 @@ const StudentManager = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleGenerateExamNumbers = async () => {
+    const prefix = examNumberPrefix;
+    const startFrom = parseInt(examNumberStartFrom) || 1;
+    const digits = parseInt(examNumberDigits) || 3;
+
+    setLoading(true);
+    let counter = startFrom;
+    const updates: { user_id: string; exam_number: string }[] = [];
+
+    for (const s of filteredStudents) {
+      const num = `${prefix}${String(counter).padStart(digits, "0")}`;
+      updates.push({ user_id: s.user_id, exam_number: num });
+      counter++;
+    }
+
+    let success = 0;
+    for (const u of updates) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ exam_number: u.exam_number })
+        .eq("user_id", u.user_id);
+      if (!error) success++;
+    }
+
+    if (success === updates.length) {
+      toast.success(`${success} nomor ujian berhasil di-generate!`);
+    } else {
+      toast.warning(`${success}/${updates.length} berhasil disimpan`);
+    }
+
+    setStudents((prev) =>
+      prev.map((s) => {
+        const u = updates.find((x) => x.user_id === s.user_id);
+        return u ? { ...s, exam_number: u.exam_number } : s;
+      })
+    );
+    setShowGenerateExamNumber(false);
+    setLoading(false);
+  };
+
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
@@ -309,6 +353,9 @@ const StudentManager = () => {
                 disabled={filteredStudents.length === 0}
               >
                 <Download className="h-4 w-4 mr-2" /> Export Excel
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowGenerateExamNumber(true)} disabled={filteredStudents.length === 0}>
+                <Hash className="h-4 w-4 mr-2" /> Generate No. Ujian
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setShowPrint(true)} disabled={filteredStudents.length === 0}>
                 <Printer className="h-4 w-4 mr-2" /> Cetak Kartu Ujian
@@ -480,6 +527,61 @@ const StudentManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Generate Exam Number Dialog */}
+      <Dialog open={showGenerateExamNumber} onOpenChange={setShowGenerateExamNumber}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Generate Nomor Ujian Otomatis</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Nomor ujian akan di-generate untuk <strong>{filteredStudents.length} siswa</strong> yang sedang ditampilkan.
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium">Awalan (Prefix)</label>
+              <Input
+                value={examNumberPrefix}
+                onChange={(e) => setExamNumberPrefix(e.target.value)}
+                placeholder="Contoh: UJ-2026-"
+                className="font-mono"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Mulai dari</label>
+                <Input
+                  type="number"
+                  value={examNumberStartFrom}
+                  onChange={(e) => setExamNumberStartFrom(e.target.value)}
+                  min="1"
+                  className="font-mono"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium">Jumlah digit</label>
+                <Input
+                  type="number"
+                  value={examNumberDigits}
+                  onChange={(e) => setExamNumberDigits(e.target.value)}
+                  min="1"
+                  max="6"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+            <div className="rounded-lg bg-muted p-3">
+              <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+              <p className="font-mono text-sm text-foreground">
+                {examNumberPrefix}{String(parseInt(examNumberStartFrom) || 1).padStart(parseInt(examNumberDigits) || 3, "0")} — {examNumberPrefix}{String((parseInt(examNumberStartFrom) || 1) + filteredStudents.length - 1).padStart(parseInt(examNumberDigits) || 3, "0")}
+              </p>
+            </div>
+            <Button onClick={handleGenerateExamNumbers} disabled={loading || filteredStudents.length === 0} className="w-full exam-gradient border-0">
+              {loading ? "Menyimpan..." : `Generate ${filteredStudents.length} Nomor Ujian`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ExamCardPrinter
         open={showPrint}
