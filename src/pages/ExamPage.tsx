@@ -99,14 +99,12 @@ const ExamPage = () => {
         state: {
           studentName,
           examTitle,
-          total,
-          correct: data?.correct ?? 0,
         },
       });
     } catch (e) {
       console.error("Failed to submit exam:", e);
       navigate("/result", {
-        state: { studentName, examTitle, total, correct: 0 },
+        state: { studentName, examTitle },
       });
     }
   }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
@@ -144,6 +142,7 @@ const ExamPage = () => {
   const [studentProfile, setStudentProfile] = useState<{
     full_name: string;
     nisn: string | null;
+    exam_number: string | null;
     class_name: string;
     room_name: string;
   } | null>(null);
@@ -157,7 +156,7 @@ const ExamPage = () => {
       if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, nisn, class_id")
+        .select("full_name, nisn, exam_number, class_id")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!profile) return;
@@ -182,6 +181,7 @@ const ExamPage = () => {
       setStudentProfile({
         full_name: profile.full_name,
         nisn: profile.nisn,
+        exam_number: (profile as any).exam_number,
         class_name: className,
         room_name: roomName,
       });
@@ -229,6 +229,7 @@ const ExamPage = () => {
             {[
               { label: "Nama", value: studentProfile.full_name },
               { label: "NISN", value: studentProfile.nisn || "-" },
+              { label: "No. Ujian", value: studentProfile.exam_number || "-" },
               { label: "Kelas", value: studentProfile.class_name },
               { label: "Ruangan", value: studentProfile.room_name },
               { label: "Ujian", value: examTitle },

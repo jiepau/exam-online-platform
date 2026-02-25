@@ -151,6 +151,7 @@ export type Database = {
           birth_place: string | null
           class_id: string | null
           created_at: string
+          exam_number: string | null
           full_name: string
           id: string
           nip: string | null
@@ -165,6 +166,7 @@ export type Database = {
           birth_place?: string | null
           class_id?: string | null
           created_at?: string
+          exam_number?: string | null
           full_name: string
           id?: string
           nip?: string | null
@@ -179,6 +181,7 @@ export type Database = {
           birth_place?: string | null
           class_id?: string | null
           created_at?: string
+          exam_number?: string | null
           full_name?: string
           id?: string
           nip?: string | null
