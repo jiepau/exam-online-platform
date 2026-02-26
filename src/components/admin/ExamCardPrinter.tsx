@@ -14,6 +14,7 @@ interface Student {
   full_name: string;
   nisn: string | null;
   class_id: string | null;
+  exam_number: string | null;
 }
 
 interface Room {
@@ -53,8 +54,14 @@ const ExamCardPrinter = ({ open, onOpenChange, students, getClassName }: ExamCar
     if (open) {
       fetchRooms();
       fetchAssignments();
+      // Initialize exam numbers from saved student data
+      const saved: Record<string, string> = {};
+      students.forEach((s) => {
+        if (s.exam_number) saved[s.user_id] = s.exam_number;
+      });
+      setExamNumbers(saved);
     }
-  }, [open]);
+  }, [open, students]);
 
   const fetchRooms = async () => {
     const { data } = await supabase.from("rooms").select("*").order("sort_order");
