@@ -18,6 +18,7 @@ import StudentManager from "./pages/admin/StudentManager";
 import ProfileEdit from "./pages/admin/ProfileEdit";
 import StudentResultDetail from "./pages/admin/StudentResultDetail";
 import Settings from "./pages/admin/Settings";
+import ViolationHistory from "./pages/admin/ViolationHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -57,6 +58,7 @@ const App = () => {
               <Route path="/admin/students" element={<AdminRoute><StudentManager /></AdminRoute>} />
               <Route path="/admin/profile" element={<AdminRoute><ProfileEdit /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
+              <Route path="/admin/violations" element={<AdminRoute><ViolationHistory /></AdminRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
             </ThemeProvider>
