@@ -129,7 +129,8 @@ const QuestionCard = ({
             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
               {questionType === "true_false" ? "B/S" :
                questionType === "multiple_select" ? "PG Kompleks" :
-               questionType === "short_answer" ? "Isian" : ""}
+               questionType === "short_answer" ? "Isian" :
+               questionType === "matching" ? "Menjodohkan" : ""}
             </span>
           )}
         </div>
