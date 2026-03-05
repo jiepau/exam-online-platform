@@ -336,9 +336,17 @@ const StudentResultDetail = () => {
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Nilai</p>
-                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>{score ?? "-"}</p>
+                    <p className="text-xs text-muted-foreground">Skor</p>
+                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
+                      {earnedScore ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{maxScore}</span>
+                    </p>
                   </div>
+                  {percentage !== null && (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Persentase</p>
+                      <p className={`text-2xl font-bold ${passed ? "text-success" : "text-destructive"}`}>{percentage}%</p>
+                    </div>
+                  )}
                   {session.finished_at && (
                     <span className={`rounded-full px-3 py-1 text-sm font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {passed ? "Lulus" : "Tidak Lulus"}
