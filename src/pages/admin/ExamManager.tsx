@@ -149,7 +149,7 @@ const ExamManager = () => {
 
   const addOption = (qIndex: number) => {
     setQuestions((prev) => prev.map((q, i) =>
-      i === qIndex ? { ...q, options: [...q.options, ""] } : q
+      i === qIndex ? { ...q, options: [...q.options, q.question_type === "matching" ? "|" : ""] } : q
     ));
   };
 
