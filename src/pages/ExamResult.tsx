@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { GraduationCap, CheckCircle, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import AppFooter from "@/components/AppFooter";
 
 const ExamResult = () => {
   const location = useLocation();
@@ -18,7 +19,8 @@ const ExamResult = () => {
   const { studentName, examTitle } = state;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-md rounded-2xl bg-card p-8 shadow-xl border border-border text-center">
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
           <CheckCircle className="h-10 w-10 text-primary" />
@@ -38,6 +40,8 @@ const ExamResult = () => {
           <Home className="h-5 w-5" /> Kembali ke Halaman Utama
         </Button>
       </div>
+      </div>
+      <AppFooter />
     </div>
   );
 };

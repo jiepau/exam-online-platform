@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import AppFooter from "@/components/AppFooter";
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -65,7 +66,8 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="flex-1 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl exam-gradient">
@@ -163,6 +165,8 @@ const AuthPage = () => {
           ← Kembali ke Beranda
         </button>
       </div>
+      </div>
+      <AppFooter />
     </div>
   );
 };

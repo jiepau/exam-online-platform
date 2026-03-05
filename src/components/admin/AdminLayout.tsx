@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
 import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
+import AppFooter from "@/components/AppFooter";
 import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const navItems = [
@@ -73,12 +74,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
 
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
 
-      <footer className="border-t border-border bg-card mt-auto">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} {settings.school_name}. All rights reserved.</p>
-          <p>Powered by <span className="font-semibold text-primary">ExON</span> v1.8.0</p>
-        </div>
-      </footer>
+      <AppFooter />
 
       <WhatsNewDialog externalOpen={whatsNewOpen} onExternalClose={() => setWhatsNewOpen(false)} />
     </div>

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
+import AppFooter from "@/components/AppFooter";
 import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const InstallBanner = () => {
@@ -238,6 +239,7 @@ const Index = () => {
           </div>
         </div>
       </main>
+      <AppFooter />
     </div>
   );
 };
