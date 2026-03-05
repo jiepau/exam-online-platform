@@ -275,6 +275,13 @@ const ExamPage = () => {
           <h2 className="text-xl font-bold text-foreground mb-2">Konfirmasi Data Peserta</h2>
           <p className="text-sm text-muted-foreground mb-4">Pastikan data berikut sudah benar sebelum memulai ujian.</p>
 
+          {draftLoaded && (
+            <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-sm text-primary flex items-center gap-2">
+              <Cloud className="h-4 w-4 shrink-0" />
+              <span>Jawaban sebelumnya ditemukan dan akan dilanjutkan otomatis.</span>
+            </div>
+          )}
+
           <div className="text-left rounded-xl border border-border bg-muted/30 p-4 mb-4 space-y-2">
             {[
               { label: "Nama", value: studentProfile.full_name },
