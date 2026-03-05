@@ -76,28 +76,24 @@ Deno.serve(async (req) => {
       if (type === "multiple_choice" || type === "true_false") {
         if (studentAnswer === q.correct_answer) isCorrect = true;
       } else if (type === "multiple_select") {
-        // Compare arrays of selected indices
         const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
         const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        // Must match exactly
         if (
           correctIndices.length === studentIndices.length &&
           correctIndices.every((idx: number) => studentIndices.includes(idx))
         ) {
-          correct++;
+          isCorrect = true;
         }
       } else if (type === "short_answer") {
-        // Case-insensitive text comparison with aliases
         const data = q.correct_answer_data || {};
-        const correctAnswer = (data.answer || "").trim().toLowerCase();
+        const correctAns = (data.answer || "").trim().toLowerCase();
         const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
-        const allAccepted = [correctAnswer, ...aliases].filter(Boolean);
+        const allAccepted = [correctAns, ...aliases].filter(Boolean);
         const studentText = (typeof studentAnswer === "string" ? studentAnswer : "").trim().toLowerCase();
         if (studentText && allAccepted.includes(studentText)) {
-          correct++;
+          isCorrect = true;
         }
       } else if (type === "matching") {
-        // Matching: correct order is [0, 1, 2, ...n-1]
         const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
         const expectedOrder = Array.from({ length: studentOrder.length }, (_, i) => i);
         if (
@@ -105,12 +101,17 @@ Deno.serve(async (req) => {
           studentOrder.length === expectedOrder.length &&
           studentOrder.every((v: number, i: number) => v === expectedOrder[i])
         ) {
-          correct++;
+          isCorrect = true;
         }
+      }
+
+      if (isCorrect) {
+        correctCount++;
+        totalScore += weight;
       }
     });
 
-    const score = correct;
+    const score = totalScore;
 
     // Save exam session
     const { data: session, error: sessionError } = await adminClient
