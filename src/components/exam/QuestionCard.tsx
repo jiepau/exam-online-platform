@@ -25,7 +25,7 @@ const QuestionCard = ({
   onToggleFlag,
 }: QuestionCardProps) => {
   return (
-    <div className="rounded-xl bg-card p-6 shadow-md border border-border">
+    <div className="rounded-xl bg-card p-4 sm:p-6 shadow-md border border-border">
       <div className="mb-4 flex items-center justify-between">
         <span className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold text-primary">
           Soal {questionNumber} / {totalQuestions}
@@ -43,7 +43,7 @@ const QuestionCard = ({
         </button>
       </div>
 
-      <div className="mb-6 whitespace-pre-line text-base leading-relaxed text-foreground">
+      <div className="mb-4 sm:mb-6 whitespace-pre-line text-sm sm:text-base leading-relaxed text-foreground">
         <MathText text={text} />
         {imageUrl && (
           <img src={imageUrl} alt="Gambar soal" className="mt-3 max-h-64 rounded-lg border border-border object-contain" />
@@ -58,7 +58,7 @@ const QuestionCard = ({
             <button
               key={index}
               onClick={() => onAnswer(index)}
-              className={`flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+              className={`flex w-full items-start gap-2 sm:gap-3 rounded-xl border-2 p-3 sm:p-4 text-left transition-all duration-200 ${
                 isSelected
                   ? "border-primary bg-primary/5 shadow-sm"
                   : "border-border bg-card hover:border-primary/30 hover:bg-exam-surface"
