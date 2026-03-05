@@ -117,7 +117,12 @@ const StudentResultDetail = () => {
       const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
       const studentIndices: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
       if (studentIndices.length === 0) return null;
-      return correctIndices.length === studentIndices.length && correctIndices.every((i) => studentIndices.includes(i));
+      const correctHits = studentIndices.filter((i) => correctIndices.includes(i)).length;
+      const wrongHits = studentIndices.filter((i) => !correctIndices.includes(i)).length;
+      const ratio = Math.max(0, (correctHits - wrongHits) / correctIndices.length);
+      if (ratio === 1) return true;
+      if (ratio > 0) return "partial";
+      return false;
     }
     if (type === "short_answer") {
       const studentText = typeof q.selected_answer_data === "string" ? q.selected_answer_data.trim().toLowerCase() : "";
@@ -130,7 +135,10 @@ const StudentResultDetail = () => {
     if (type === "matching") {
       const studentOrder: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
       if (studentOrder.length === 0) return null;
-      return studentOrder.every((v, i) => v === i);
+      const correctPairs = studentOrder.filter((v, i) => v === i).length;
+      if (correctPairs === studentOrder.length) return true;
+      if (correctPairs > 0) return "partial";
+      return false;
     }
     return null;
   };
