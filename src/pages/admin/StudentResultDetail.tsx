@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -107,7 +107,7 @@ const StudentResultDetail = () => {
     fetchDetail();
   }, [sessionId]);
 
-  const isCorrectAnswer = (q: AnswerDetail): boolean | null => {
+  const isCorrectAnswer = (q: AnswerDetail): boolean | null | "partial" => {
     const type = q.question_type;
     if (type === "multiple_choice" || type === "true_false") {
       if (q.selected_answer === null) return null;
@@ -117,7 +117,12 @@ const StudentResultDetail = () => {
       const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
       const studentIndices: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
       if (studentIndices.length === 0) return null;
-      return correctIndices.length === studentIndices.length && correctIndices.every((i) => studentIndices.includes(i));
+      const correctHits = studentIndices.filter((i) => correctIndices.includes(i)).length;
+      const wrongHits = studentIndices.filter((i) => !correctIndices.includes(i)).length;
+      const ratio = Math.max(0, (correctHits - wrongHits) / correctIndices.length);
+      if (ratio === 1) return true;
+      if (ratio > 0) return "partial";
+      return false;
     }
     if (type === "short_answer") {
       const studentText = typeof q.selected_answer_data === "string" ? q.selected_answer_data.trim().toLowerCase() : "";
@@ -130,7 +135,10 @@ const StudentResultDetail = () => {
     if (type === "matching") {
       const studentOrder: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
       if (studentOrder.length === 0) return null;
-      return studentOrder.every((v, i) => v === i);
+      const correctPairs = studentOrder.filter((v, i) => v === i).length;
+      if (correctPairs === studentOrder.length) return true;
+      if (correctPairs > 0) return "partial";
+      return false;
     }
     return null;
   };
@@ -146,6 +154,7 @@ const StudentResultDetail = () => {
     const correct = isCorrectAnswer(q);
     const isUnanswered = correct === null;
     const isCorrect = correct === true;
+    const isPartial = correct === "partial";
     const type = q.question_type;
 
     const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : type === "matching" ? "Menjodohkan" : "";
@@ -155,7 +164,9 @@ const StudentResultDetail = () => {
       <div key={q.question_id}
         className={`rounded-xl border p-4 ${
           isUnanswered ? "border-border bg-card" :
-          isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
+          isCorrect ? "border-success/30 bg-success/5" :
+          isPartial ? "border-warning/30 bg-warning/5" :
+          "border-destructive/30 bg-destructive/5"
         }`}
       >
         <div className="flex gap-3 items-start mb-3">
@@ -178,6 +189,7 @@ const StudentResultDetail = () => {
           <div className="shrink-0">
             {isUnanswered ? <MinusCircle className="h-5 w-5 text-muted-foreground" /> :
              isCorrect ? <CheckCircle className="h-5 w-5 text-success" /> :
+             isPartial ? <AlertCircle className="h-5 w-5 text-warning" /> :
              <XCircle className="h-5 w-5 text-destructive" />}
           </div>
         </div>
@@ -361,8 +373,9 @@ const StudentResultDetail = () => {
               </div>
             </div>
 
-            <div className="flex gap-4 mb-4 text-sm">
+            <div className="flex flex-wrap gap-4 mb-4 text-sm">
               <span className="flex items-center gap-1.5 text-success"><CheckCircle className="h-4 w-4" /> Benar</span>
+              <span className="flex items-center gap-1.5 text-warning"><AlertCircle className="h-4 w-4" /> Benar Sebagian</span>
               <span className="flex items-center gap-1.5 text-destructive"><XCircle className="h-4 w-4" /> Salah</span>
               <span className="flex items-center gap-1.5 text-muted-foreground"><MinusCircle className="h-4 w-4" /> Tidak dijawab</span>
             </div>
