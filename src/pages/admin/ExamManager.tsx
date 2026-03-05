@@ -393,6 +393,8 @@ Jawaban: Jakarta
         answer = (q.correct_answer_data || []).map((idx: number) => String.fromCharCode(65 + idx)).join(", ");
       } else if (type === "short_answer") {
         answer = q.correct_answer_data?.answer || "";
+      } else if (type === "matching") {
+        answer = (q.options as string[]).map((o: string) => o.replace("|", " → ")).join("; ");
       }
       return {
         no: i + 1, type: QUESTION_TYPE_LABELS[type as QuestionType] || type,
