@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid } from "lucide-react";
+import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
@@ -8,6 +8,7 @@ import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import ViolationOverlay from "@/components/exam/ViolationOverlay";
+import { useExamAutoSave } from "@/hooks/useExamAutoSave";
 import {
   AlertDialog,
   AlertDialogAction,
