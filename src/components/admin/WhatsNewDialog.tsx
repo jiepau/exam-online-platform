@@ -15,7 +15,7 @@ interface WhatsNewDialogProps {
 
 const WhatsNewDialog = ({ externalOpen, onExternalClose }: WhatsNewDialogProps = {}) => {
   const [open, setOpen] = useState(false);
-  const [expandedAll, setExpandedAll] = useState(false);
+  const [expandedAll, setExpandedAll] = useState(true);
 
   useEffect(() => {
     const lastSeen = localStorage.getItem(STORAGE_KEY);
