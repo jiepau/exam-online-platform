@@ -1,7 +1,7 @@
 interface QuestionNavProps {
   total: number;
   current: number;
-  answers: Record<number, number>;
+  answers: Record<number, number | number[] | string>;
   flagged: Set<number>;
   onNavigate: (index: number) => void;
 }
