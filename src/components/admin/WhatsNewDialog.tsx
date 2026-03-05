@@ -8,22 +8,31 @@ import { changelog, CURRENT_VERSION, type ChangelogEntry } from "@/data/changelo
 
 const STORAGE_KEY = "exon_last_seen_version";
 
-const WhatsNewDialog = () => {
+interface WhatsNewDialogProps {
+  externalOpen?: boolean;
+  onExternalClose?: () => void;
+}
+
+const WhatsNewDialog = ({ externalOpen, onExternalClose }: WhatsNewDialogProps = {}) => {
   const [open, setOpen] = useState(false);
   const [expandedAll, setExpandedAll] = useState(false);
 
   useEffect(() => {
     const lastSeen = localStorage.getItem(STORAGE_KEY);
     if (lastSeen !== CURRENT_VERSION) {
-      // Small delay so dashboard loads first
       const t = setTimeout(() => setOpen(true), 800);
       return () => clearTimeout(t);
     }
   }, []);
 
+  useEffect(() => {
+    if (externalOpen) setOpen(true);
+  }, [externalOpen]);
+
   const handleClose = () => {
     localStorage.setItem(STORAGE_KEY, CURRENT_VERSION);
     setOpen(false);
+    onExternalClose?.();
   };
 
   const latestEntry = changelog[changelog.length - 1];

@@ -1,9 +1,11 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye } from "lucide-react";
+import { useState } from "react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
+import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import logoMadrasah from "@/assets/logo-madrasah.png";
 
 const navItems = [
@@ -22,6 +24,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const location = useLocation();
   const { profile, signOut } = useAuth();
   const { settings } = useAppSettings();
+  const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
@@ -39,9 +42,14 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
               <p className="text-xs text-white/70">{profile?.full_name || "Guru"}</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={handleLogout} className="text-white hover:bg-white/20 gap-2">
-            <LogOut className="h-4 w-4" /> Keluar
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" onClick={() => setWhatsNewOpen(true)} className="text-white hover:bg-white/20 gap-2" size="sm">
+              <Sparkles className="h-4 w-4" /> What's New
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="text-white hover:bg-white/20 gap-2">
+              <LogOut className="h-4 w-4" /> Keluar
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -64,6 +72,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
       </nav>
 
       <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+      <WhatsNewDialog externalOpen={whatsNewOpen} onExternalClose={() => setWhatsNewOpen(false)} />
     </div>
   );
 };
