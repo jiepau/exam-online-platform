@@ -14,6 +14,7 @@ interface AnswerDetail {
   correct_answer: number;
   correct_answer_data: any;
   question_type: string;
+  point_weight: number;
   selected_answer: number | null;
   selected_answer_data: any;
 }
@@ -73,7 +74,7 @@ const StudentResultDetail = () => {
 
       const { data: questions } = await supabase
         .from("questions")
-        .select("id, sort_order, question_text, options, correct_answer, correct_answer_data, question_type")
+        .select("id, sort_order, question_text, options, correct_answer, correct_answer_data, question_type, point_weight")
         .eq("exam_id", (sess as any).exam_id)
         .order("sort_order");
 
@@ -94,6 +95,7 @@ const StudentResultDetail = () => {
           correct_answer: q.correct_answer,
           correct_answer_data: q.correct_answer_data,
           question_type: q.question_type || "multiple_choice",
+          point_weight: q.point_weight ?? 1,
           selected_answer: sa?.selected_answer ?? null,
           selected_answer_data: sa?.selected_answer_data ?? null,
         };
@@ -133,10 +135,12 @@ const StudentResultDetail = () => {
     return null;
   };
 
-  const score = session?.finished_at && session?.total_questions ? (session.correct_answers || 0) : null;
-  const percentage = session?.finished_at && session?.total_questions
-    ? Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : null;
+  const maxScore = answers.reduce((sum, q) => sum + (q.point_weight || 1), 0);
+  const earnedScore = session?.score ?? null;
+  const percentage = session?.finished_at && maxScore > 0
+    ? Math.round(((earnedScore || 0) / maxScore) * 100) : null;
   const passed = (percentage ?? 0) >= 70;
+  const hasCustomWeights = answers.some((q) => q.point_weight > 1);
 
   const renderQuestionResult = (q: AnswerDetail, idx: number) => {
     const correct = isCorrectAnswer(q);
@@ -145,6 +149,7 @@ const StudentResultDetail = () => {
     const type = q.question_type;
 
     const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : type === "matching" ? "Menjodohkan" : "";
+    const weight = q.point_weight || 1;
 
     return (
       <div key={q.question_id}
