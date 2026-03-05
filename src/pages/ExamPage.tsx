@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle } from "lucide-react";
+import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
@@ -19,6 +19,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 interface DBQuestion {
   id: string;
@@ -45,6 +52,7 @@ const ExamPage = () => {
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [loadingQ, setLoadingQ] = useState(true);
   const [examStarted, setExamStarted] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const studentName = state?.studentName || "Siswa";
   const examTitle = state?.examTitle || "";
@@ -312,20 +320,20 @@ const ExamPage = () => {
       />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg exam-gradient">
-              <GraduationCap className="h-5 w-5 text-white" />
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-3 py-2 sm:px-4 sm:py-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg exam-gradient">
+              <GraduationCap className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-sm font-bold text-foreground">{examTitle}</h1>
-              <p className="text-xs text-muted-foreground">{studentName} • {examSubject}</p>
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-sm font-bold text-foreground truncate">{examTitle}</h1>
+              <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{studentName} • {examSubject}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {violations > 0 && (
-              <div className="flex items-center gap-1.5 rounded-lg bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive">
-                <AlertTriangle className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-destructive/10 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-destructive">
+                <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                 {violations}/{maxViolations}
               </div>
             )}
@@ -335,7 +343,7 @@ const ExamPage = () => {
       </header>
 
       {/* Content */}
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-6xl px-3 py-4 sm:px-4 sm:py-6">
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
           {/* Main Question Area */}
           <div>
@@ -352,27 +360,84 @@ const ExamPage = () => {
             />
 
             {/* Navigation Buttons */}
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4 flex items-center justify-between gap-2">
               <Button
                 variant="outline"
                 onClick={() => setCurrentIndex((p) => Math.max(0, p - 1))}
                 disabled={currentIndex === 0}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4"
+                size="sm"
               >
-                <ChevronLeft className="h-4 w-4" /> Sebelumnya
+                <ChevronLeft className="h-4 w-4" /> <span className="hidden sm:inline">Sebelumnya</span><span className="sm:hidden">Prev</span>
               </Button>
+
+              {/* Mobile nav trigger */}
+              <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm" className="lg:hidden gap-1 text-xs">
+                    <LayoutGrid className="h-4 w-4" />
+                    {currentIndex + 1}/{questions.length}
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="max-h-[70vh]">
+                  <SheetHeader>
+                    <SheetTitle>Navigasi Soal</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    <QuestionNav
+                      total={questions.length}
+                      current={currentIndex}
+                      answers={answers}
+                      flagged={flagged}
+                      onNavigate={(i) => {
+                        setCurrentIndex(i);
+                        setMobileNavOpen(false);
+                      }}
+                    />
+                  </div>
+                  <div className="mt-4">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button className="w-full gap-2 exam-gradient border-0">
+                          <Send className="h-4 w-4" /> Kumpulkan Jawaban
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Kumpulkan Jawaban?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Anda telah menjawab {answeredCount} dari {questions.length} soal.
+                            {answeredCount < questions.length && (
+                              <span className="mt-1 block font-medium text-warning">
+                                ⚠️ Masih ada {questions.length - answeredCount} soal belum dijawab!
+                              </span>
+                            )}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Kembali</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleSubmit} className="exam-gradient border-0">
+                            Ya, Kumpulkan
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </SheetContent>
+              </Sheet>
 
               {currentIndex < questions.length - 1 ? (
                 <Button
                   onClick={() => setCurrentIndex((p) => Math.min(questions.length - 1, p + 1))}
-                  className="gap-2 exam-gradient border-0"
+                  className="gap-1 sm:gap-2 exam-gradient border-0 text-xs sm:text-sm px-2 sm:px-4"
+                  size="sm"
                 >
-                  Selanjutnya <ChevronRight className="h-4 w-4" />
+                  <span className="hidden sm:inline">Selanjutnya</span><span className="sm:hidden">Next</span> <ChevronRight className="h-4 w-4" />
                 </Button>
               ) : (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="gap-2 exam-gradient border-0">
+                    <Button className="gap-1 sm:gap-2 exam-gradient border-0 text-xs sm:text-sm px-2 sm:px-4" size="sm">
                       <Send className="h-4 w-4" /> Kumpulkan
                     </Button>
                   </AlertDialogTrigger>
@@ -401,7 +466,7 @@ const ExamPage = () => {
             </div>
           </div>
 
-          {/* Sidebar Nav */}
+          {/* Sidebar Nav - Desktop only */}
           <div className="hidden lg:block">
             <div className="sticky top-20">
               <QuestionNav
