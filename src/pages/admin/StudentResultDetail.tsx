@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -164,7 +164,9 @@ const StudentResultDetail = () => {
       <div key={q.question_id}
         className={`rounded-xl border p-4 ${
           isUnanswered ? "border-border bg-card" :
-          isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
+          isCorrect ? "border-success/30 bg-success/5" :
+          isPartial ? "border-warning/30 bg-warning/5" :
+          "border-destructive/30 bg-destructive/5"
         }`}
       >
         <div className="flex gap-3 items-start mb-3">
@@ -187,6 +189,7 @@ const StudentResultDetail = () => {
           <div className="shrink-0">
             {isUnanswered ? <MinusCircle className="h-5 w-5 text-muted-foreground" /> :
              isCorrect ? <CheckCircle className="h-5 w-5 text-success" /> :
+             isPartial ? <AlertCircle className="h-5 w-5 text-warning" /> :
              <XCircle className="h-5 w-5 text-destructive" />}
           </div>
         </div>
