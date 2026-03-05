@@ -65,6 +65,44 @@ export type Database = {
         }
         Relationships: []
       }
+      draft_answers: {
+        Row: {
+          answers: Json
+          current_index: number
+          exam_id: string
+          flagged_indices: Json
+          id: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          answers?: Json
+          current_index?: number
+          exam_id: string
+          flagged_indices?: Json
+          id?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          answers?: Json
+          current_index?: number
+          exam_id?: string
+          flagged_indices?: Json
+          id?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "draft_answers_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_sessions: {
         Row: {
           correct_answers: number | null

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid } from "lucide-react";
+import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
@@ -8,6 +8,7 @@ import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import ViolationOverlay from "@/components/exam/ViolationOverlay";
+import { useExamAutoSave } from "@/hooks/useExamAutoSave";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +54,10 @@ const ExamPage = () => {
   const [loadingQ, setLoadingQ] = useState(true);
   const [examStarted, setExamStarted] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  // Auto-save hook
+  const { updateState, saveNow, loadDraft, clearDraft } = useExamAutoSave(state?.examId, examStarted);
 
   const studentName = state?.studentName || "Siswa";
   const examTitle = state?.examTitle || "";
@@ -72,22 +77,38 @@ const ExamPage = () => {
         .eq("exam_id", state.examId)
         .order("sort_order");
       if (data) {
-        setQuestions(
-          data.map((q: any) => ({
-            id: q.id,
-            question_text: q.question_text,
-            options: q.options as string[],
-            sort_order: q.sort_order,
-            image_url: q.image_url || undefined,
-          }))
-        );
+        const qs = data.map((q: any) => ({
+          id: q.id,
+          question_text: q.question_text,
+          options: q.options as string[],
+          sort_order: q.sort_order,
+          image_url: q.image_url || undefined,
+        }));
+        setQuestions(qs);
+
+        // Load saved draft after questions are ready
+        const draft = await loadDraft();
+        if (draft && Object.keys(draft.answers).length > 0) {
+          setAnswers(draft.answers);
+          setFlagged(new Set(draft.flagged));
+          setCurrentIndex(draft.currentIndex);
+          setDraftLoaded(true);
+        }
       }
       setLoadingQ(false);
     };
     fetchQuestions();
-  }, [state, navigate]);
+  }, [state, navigate, loadDraft]);
+
+  // Keep auto-save state in sync
+  useEffect(() => {
+    updateState({ answers, flagged, currentIndex });
+  }, [answers, flagged, currentIndex, updateState]);
 
   const handleSubmitFn = useCallback(async () => {
+    // Save one last time before submitting
+    await saveNow();
+
     const total = questions.length;
 
     try {
@@ -104,6 +125,9 @@ const ExamPage = () => {
         console.error("Failed to submit exam:", error);
       }
 
+      // Clear draft after successful submission
+      await clearDraft();
+
       navigate("/result", {
         state: {
           studentName,
@@ -116,7 +140,7 @@ const ExamPage = () => {
         state: { studentName, examTitle },
       });
     }
-  }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
+  }, [answers, questions, navigate, studentName, examTitle, state, flagged, saveNow, clearDraft]);
 
   // Anti-cheat
   const { violations, isFullscreen, enterFullscreen, maxViolations, lastViolationType } = useAntiCheat(
@@ -250,6 +274,13 @@ const ExamPage = () => {
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">Konfirmasi Data Peserta</h2>
           <p className="text-sm text-muted-foreground mb-4">Pastikan data berikut sudah benar sebelum memulai ujian.</p>
+
+          {draftLoaded && (
+            <div className="mb-4 rounded-lg bg-primary/10 border border-primary/20 px-4 py-3 text-sm text-primary flex items-center gap-2">
+              <Cloud className="h-4 w-4 shrink-0" />
+              <span>Jawaban sebelumnya ditemukan dan akan dilanjutkan otomatis.</span>
+            </div>
+          )}
 
           <div className="text-left rounded-xl border border-border bg-muted/30 p-4 mb-4 space-y-2">
             {[
