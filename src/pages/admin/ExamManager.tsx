@@ -701,7 +701,7 @@ Jawaban: Jakarta
             <input ref={fileInputRef} type="file" accept=".docx,.json" onChange={handleImportQuestions} className="hidden" />
           </div>
           <p className="text-xs text-muted-foreground">
-            📄 Import Word/JSON otomatis menghasilkan soal Pilihan Ganda. Ubah tipe soal setelah import jika perlu.
+            📄 Import Word/JSON otomatis mendeteksi tipe soal: PG, B/S, PG Kompleks, dan Isian Singkat.
           </p>
           <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground">📐 Panduan Penulisan Rumus Matematika (LaTeX):</p>
