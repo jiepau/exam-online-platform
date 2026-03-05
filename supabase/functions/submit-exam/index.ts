@@ -24,7 +24,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Verify the student
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -45,13 +44,12 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Use service role to read correct answers (not exposed to client)
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch questions with correct_answer server-side
+    // Fetch questions with correct answers and type
     const { data: questions, error: qError } = await adminClient
       .from("questions")
-      .select("id, correct_answer, sort_order")
+      .select("id, correct_answer, correct_answer_data, question_type, sort_order")
       .eq("exam_id", exam_id)
       .order("sort_order");
 
@@ -62,13 +60,42 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate score server-side
+    // Calculate score server-side with type-aware grading
     const total = questions.length;
     let correct = 0;
+
     questions.forEach((q, i) => {
-      if (answers[String(i)] === q.correct_answer) correct++;
+      const studentAnswer = answers[String(i)];
+      const type = q.question_type || "multiple_choice";
+
+      if (type === "multiple_choice" || type === "true_false") {
+        // Simple integer comparison
+        if (studentAnswer === q.correct_answer) correct++;
+      } else if (type === "multiple_select") {
+        // Compare arrays of selected indices
+        const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
+        const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
+        // Must match exactly
+        if (
+          correctIndices.length === studentIndices.length &&
+          correctIndices.every((idx: number) => studentIndices.includes(idx))
+        ) {
+          correct++;
+        }
+      } else if (type === "short_answer") {
+        // Case-insensitive text comparison with aliases
+        const data = q.correct_answer_data || {};
+        const correctAnswer = (data.answer || "").trim().toLowerCase();
+        const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
+        const allAccepted = [correctAnswer, ...aliases].filter(Boolean);
+        const studentText = (typeof studentAnswer === "string" ? studentAnswer : "").trim().toLowerCase();
+        if (studentText && allAccepted.includes(studentText)) {
+          correct++;
+        }
+      }
     });
-    const score = correct; // 1 point per correct answer
+
+    const score = correct;
 
     // Save exam session
     const { data: session, error: sessionError } = await adminClient
@@ -96,7 +123,7 @@ Deno.serve(async (req) => {
     const answerRows = questions.map((q, i) => ({
       session_id: session.id,
       question_id: q.id,
-      selected_answer: answers[String(i)] ?? null,
+      selected_answer: typeof answers[String(i)] === "number" ? answers[String(i)] : null,
       is_flagged: flaggedSet.has(i),
     }));
     await adminClient.from("student_answers").insert(answerRows);
