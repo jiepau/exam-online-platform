@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     await adminClient.from("student_answers").insert(answerRows);
 
     return new Response(
-      JSON.stringify({ success: true, score, correct, total }),
+      JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
