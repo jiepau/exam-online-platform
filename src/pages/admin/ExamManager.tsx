@@ -20,13 +20,14 @@ import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 
-export type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer";
+export type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "matching";
 
 const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
   multiple_choice: "Pilihan Ganda",
   true_false: "Benar / Salah",
   multiple_select: "PG Kompleks",
   short_answer: "Isian Singkat",
+  matching: "Menjodohkan",
 };
 
 interface Exam {
@@ -131,6 +132,7 @@ const ExamManager = () => {
       true_false: { options: ["Benar", "Salah"], correct_answer: 0 },
       multiple_select: { options: ["", "", "", ""], correct_answer: 0, correct_answer_data: [] },
       short_answer: { options: [], correct_answer: 0, correct_answer_data: { answer: "", aliases: [] } },
+      matching: { options: ["|", "|", "|"], correct_answer: 0, correct_answer_data: null },
     };
     setQuestions((prev) => [...prev, { question_text: "", question_type: type, image_url: undefined, ...defaults[type] } as QuestionForm]);
   };
@@ -147,7 +149,7 @@ const ExamManager = () => {
 
   const addOption = (qIndex: number) => {
     setQuestions((prev) => prev.map((q, i) =>
-      i === qIndex ? { ...q, options: [...q.options, ""] } : q
+      i === qIndex ? { ...q, options: [...q.options, q.question_type === "matching" ? "|" : ""] } : q
     ));
   };
 
@@ -205,22 +207,76 @@ const ExamManager = () => {
       const questionText = lines[0].replace(/^\d+[.)]\s*/, "").trim();
       const options: string[] = [];
       let correctAnswer = 0;
+      let starCount = 0;
+      const starredIndices: number[] = [];
+
+      // Check for short answer pattern: "Jawaban: ..." or "Jawab: ..."
+      const answerLine = lines.find((l) => /^(jawab(an)?)\s*[:=]\s*.+/i.test(l.trim()));
+      if (answerLine && lines.length <= 3) {
+        const answer = answerLine.replace(/^(jawab(an)?)\s*[:=]\s*/i, "").trim();
+        questions.push({
+          question_text: questionText,
+          options: [],
+          correct_answer: 0,
+          question_type: "short_answer",
+          correct_answer_data: { answer, aliases: [] },
+        });
+        continue;
+      }
+
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i].trim();
-        const optMatch = line.match(/^([A-Da-d])[.)]\s*(.*)/);
+        const optMatch = line.match(/^([A-Fa-f])[.)]\s*(.*)/);
         if (optMatch) {
           let optText = optMatch[2].trim();
           if (optText.endsWith("*") || optText.startsWith("*")) {
-            correctAnswer = options.length;
+            starredIndices.push(options.length);
+            starCount++;
             optText = optText.replace(/\*/g, "").trim();
           }
           options.push(optText);
         }
       }
-      if (options.length >= 2) {
-        while (options.length < 4) options.push("");
-        questions.push({ question_text: questionText, options: options.slice(0, 4), correct_answer: correctAnswer, question_type: "multiple_choice" });
+
+      if (options.length < 2) continue;
+
+      // Detect True/False: exactly 2 options that are Benar/Salah variants
+      const isTrueFalse = options.length === 2 &&
+        /^(benar|betul|true|b)$/i.test(options[0]) &&
+        /^(salah|false|s)$/i.test(options[1]);
+
+      if (isTrueFalse) {
+        questions.push({
+          question_text: questionText,
+          options: ["Benar", "Salah"],
+          correct_answer: starredIndices.length > 0 ? starredIndices[0] : 0,
+          question_type: "true_false",
+        });
+        continue;
       }
+
+      // Detect PG Kompleks: more than 1 starred answer
+      if (starCount > 1) {
+        while (options.length < 4) options.push("");
+        questions.push({
+          question_text: questionText,
+          options,
+          correct_answer: 0,
+          question_type: "multiple_select",
+          correct_answer_data: starredIndices,
+        });
+        continue;
+      }
+
+      // Default: Multiple Choice
+      correctAnswer = starredIndices.length > 0 ? starredIndices[0] : 0;
+      while (options.length < 4) options.push("");
+      questions.push({
+        question_text: questionText,
+        options: options.slice(0, Math.max(4, options.length)),
+        correct_answer: correctAnswer,
+        question_type: "multiple_choice",
+      });
     }
     return questions;
   };
@@ -256,7 +312,7 @@ const ExamManager = () => {
   };
 
   const downloadTemplate = () => {
-    const templateText = `TEMPLATE SOAL UJIAN - MTS Al Wathoniyah 43
+    const templateText = `TEMPLATE SOAL UJIAN
 ================================================
 
 PETUNJUK PENGISIAN:
@@ -264,21 +320,37 @@ PETUNJUK PENGISIAN:
 - Pilihan jawaban ditulis dengan huruf (A. B. C. D.)
 - Tandai jawaban benar dengan tanda bintang (*) di akhir pilihan
 - Untuk rumus matematika, gunakan format: $rumus$
-- Teks Bahasa Arab bisa langsung ditulis
+
+TIPE SOAL OTOMATIS:
+- Pilihan Ganda  : Soal dengan pilihan A-D, satu jawaban bertanda *
+- Benar/Salah    : Soal dengan 2 opsi "Benar" dan "Salah"
+- PG Kompleks    : Soal dengan lebih dari 1 jawaban bertanda *
+- Isian Singkat  : Soal dengan "Jawaban: ..." tanpa pilihan A-D
 
 ================================================
 
+CONTOH PILIHAN GANDA:
 1. Berapakah hasil dari 2x + 3 = 7, maka nilai x adalah...
 A. 1
 B. 2*
 C. 3
 D. 4
 
-2. Hasil dari 15 x 8 adalah...
-A. 100
-B. 110
-C. 120*
-D. 130
+CONTOH BENAR/SALAH:
+2. Matahari terbit dari arah Timur
+A. Benar*
+B. Salah
+
+CONTOH PG KOMPLEKS (jawaban lebih dari 1):
+3. Manakah yang termasuk bilangan prima?
+A. 2*
+B. 4
+C. 5*
+D. 9
+
+CONTOH ISIAN SINGKAT:
+4. Ibukota negara Indonesia adalah...
+Jawaban: Jakarta
 `;
     const blob = new Blob([templateText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -321,6 +393,8 @@ D. 130
         answer = (q.correct_answer_data || []).map((idx: number) => String.fromCharCode(65 + idx)).join(", ");
       } else if (type === "short_answer") {
         answer = q.correct_answer_data?.answer || "";
+      } else if (type === "matching") {
+        answer = (q.options as string[]).map((o: string) => o.replace("|", " → ")).join("; ");
       }
       return {
         no: i + 1, type: QUESTION_TYPE_LABELS[type as QuestionType] || type,
@@ -363,6 +437,7 @@ D. 130
                 true_false: { options: ["Benar", "Salah"], correct_answer: 0, correct_answer_data: undefined },
                 multiple_select: { options: q.options.length >= 2 ? q.options : ["", "", "", ""], correct_answer: 0, correct_answer_data: [] },
                 short_answer: { options: [], correct_answer: 0, correct_answer_data: { answer: "", aliases: [] } },
+                matching: { options: ["|", "|", "|"], correct_answer: 0, correct_answer_data: null },
               };
               const updates = { ...defaults[newType], question_type: newType };
               setQuestions((prev) => prev.map((item, i) => i === qi ? { ...item, ...updates } : item));
@@ -520,6 +595,47 @@ D. 130
             <p className="text-xs text-muted-foreground">
               💡 Pencocokan tidak case-sensitive. Tambahkan variasi ejaan jika perlu.
             </p>
+           </div>
+        )}
+
+        {type === "matching" && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Isi pasangan kiri dan kanan. Urutan yang benar adalah pasangan yang sesuai.</p>
+            {q.options.map((opt, oi) => {
+              const parts = (opt || "").split("|");
+              const left = parts[0] || "";
+              const right = parts[1] || "";
+              return (
+                <div key={oi} className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {oi + 1}
+                  </span>
+                  <Input
+                    value={left}
+                    onChange={(e) => updateOption(qi, oi, `${e.target.value}|${right}`)}
+                    placeholder={`Pernyataan ${oi + 1}`}
+                    className="h-9 flex-1"
+                  />
+                  <span className="text-muted-foreground text-sm">→</span>
+                  <Input
+                    value={right}
+                    onChange={(e) => updateOption(qi, oi, `${left}|${e.target.value}`)}
+                    placeholder={`Jawaban ${oi + 1}`}
+                    className="h-9 flex-1"
+                  />
+                  {q.options.length > 2 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeOption(qi, oi)} className="text-muted-foreground">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            {q.options.length < 8 && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qi)} className="text-xs gap-1">
+                <Plus className="h-3 w-3" /> Tambah Pasangan
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -587,7 +703,7 @@ D. 130
             <input ref={fileInputRef} type="file" accept=".docx,.json" onChange={handleImportQuestions} className="hidden" />
           </div>
           <p className="text-xs text-muted-foreground">
-            📄 Import Word/JSON otomatis menghasilkan soal Pilihan Ganda. Ubah tipe soal setelah import jika perlu.
+            📄 Import Word/JSON otomatis mendeteksi tipe soal: PG, B/S, PG Kompleks, dan Isian Singkat.
           </p>
           <div className="rounded-lg bg-muted/50 border border-border p-3 text-xs text-muted-foreground space-y-1">
             <p className="font-semibold text-foreground">📐 Panduan Penulisan Rumus Matematika (LaTeX):</p>

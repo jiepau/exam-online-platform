@@ -92,6 +92,17 @@ Deno.serve(async (req) => {
         if (studentText && allAccepted.includes(studentText)) {
           correct++;
         }
+      } else if (type === "matching") {
+        // Matching: correct order is [0, 1, 2, ...n-1]
+        const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
+        const expectedOrder = Array.from({ length: studentOrder.length }, (_, i) => i);
+        if (
+          studentOrder.length > 0 &&
+          studentOrder.length === expectedOrder.length &&
+          studentOrder.every((v: number, i: number) => v === expectedOrder[i])
+        ) {
+          correct++;
+        }
       }
     });
 
@@ -127,7 +138,7 @@ Deno.serve(async (req) => {
         session_id: session.id,
         question_id: q.id,
         selected_answer: typeof ans === "number" ? ans : null,
-        selected_answer_data: (type === "multiple_select" || type === "short_answer") ? ans : null,
+        selected_answer_data: (type === "multiple_select" || type === "short_answer" || type === "matching") ? ans : null,
         is_flagged: flaggedSet.has(i),
       };
     });

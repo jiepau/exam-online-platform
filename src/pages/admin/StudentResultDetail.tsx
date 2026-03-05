@@ -125,6 +125,11 @@ const StudentResultDetail = () => {
       const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
       return [correct, ...aliases].filter(Boolean).includes(studentText);
     }
+    if (type === "matching") {
+      const studentOrder: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
+      if (studentOrder.length === 0) return null;
+      return studentOrder.every((v, i) => v === i);
+    }
     return null;
   };
 
@@ -139,7 +144,7 @@ const StudentResultDetail = () => {
     const isCorrect = correct === true;
     const type = q.question_type;
 
-    const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : "";
+    const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : type === "matching" ? "Menjodohkan" : "";
 
     return (
       <div key={q.question_id}
@@ -250,6 +255,45 @@ const StudentResultDetail = () => {
             )}
           </div>
         )}
+
+        {/* Matching */}
+        {type === "matching" && (() => {
+          const pairs = (q.options || []).map((opt: string) => {
+            const idx = (opt || "").indexOf("|");
+            if (idx === -1) return { left: opt, right: opt };
+            return { left: opt.substring(0, idx), right: opt.substring(idx + 1) };
+          });
+          const studentOrder: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
+          return (
+            <div className="pl-10 space-y-2">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-center">
+                {pairs.map((pair: {left: string; right: string}, pi: number) => {
+                  const studentRightIdx = studentOrder[pi];
+                  const studentRight = studentRightIdx !== undefined ? pairs[studentRightIdx]?.right : undefined;
+                  const pairCorrect = studentRightIdx === pi;
+                  return (
+                    <>
+                      <div key={`l${pi}`} className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
+                        <span className="font-bold text-primary mr-1">{pi + 1}.</span> {pair.left}
+                      </div>
+                      <span key={`a${pi}`} className="text-muted-foreground">→</span>
+                      <div key={`r${pi}`} className={`rounded-lg border px-3 py-1.5 text-sm ${
+                        !studentRight ? "border-border text-muted-foreground italic" :
+                        pairCorrect ? "border-success/50 bg-success/10 text-success" :
+                        "border-destructive/50 bg-destructive/10 text-destructive"
+                      }`}>
+                        {studentRight || "(tidak dijawab)"}
+                        {!pairCorrect && studentRight && (
+                          <span className="ml-2 text-xs text-success">✓ {pair.right}</span>
+                        )}
+                      </div>
+                    </>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   };
