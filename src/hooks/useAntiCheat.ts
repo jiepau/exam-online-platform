@@ -1,6 +1,31 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 
+// Play alarm buzzer using Web Audio API
+const playAlarmSound = (violationCount: number) => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const beeps = violationCount >= 2 ? 3 : 2;
+
+    for (let i = 0; i < beeps; i++) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "square";
+      osc.frequency.value = violationCount >= 2 ? 880 : 660;
+      gain.gain.value = 0.3;
+      const start = ctx.currentTime + i * 0.3;
+      osc.start(start);
+      osc.stop(start + 0.2);
+    }
+
+    setTimeout(() => ctx.close(), (beeps * 0.3 + 0.5) * 1000);
+  } catch {
+    // Audio not supported
+  }
+};
+
 interface AntiCheatOptions {
   onViolation?: (type: string, count: number) => void;
   maxViolations?: number;
@@ -44,6 +69,9 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
       setViolations((prev) => {
         const next = prev + 1;
         onViolation?.(type, next);
+
+        // Play alarm sound for supervisor
+        playAlarmSound(next);
 
         if (next === 1) {
           toast.warning(`⚠️ Peringatan: ${type}. Pelanggaran ${next}/${maxViolations}`);
