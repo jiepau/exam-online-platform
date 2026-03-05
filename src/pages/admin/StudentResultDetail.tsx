@@ -154,6 +154,7 @@ const StudentResultDetail = () => {
     const correct = isCorrectAnswer(q);
     const isUnanswered = correct === null;
     const isCorrect = correct === true;
+    const isPartial = correct === "partial";
     const type = q.question_type;
 
     const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : type === "matching" ? "Menjodohkan" : "";
