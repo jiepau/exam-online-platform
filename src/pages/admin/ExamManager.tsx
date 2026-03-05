@@ -436,6 +436,9 @@ Jawaban: Jakarta
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-primary">Soal {qi + 1}</span>
             <Badge variant="secondary" className="text-xs">{QUESTION_TYPE_LABELS[type]}</Badge>
+            {q.point_weight > 1 && (
+              <Badge variant="outline" className="text-xs">{q.point_weight} poin</Badge>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Select value={type} onValueChange={(v) => {
