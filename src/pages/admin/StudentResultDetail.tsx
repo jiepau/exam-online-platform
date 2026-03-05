@@ -373,8 +373,9 @@ const StudentResultDetail = () => {
               </div>
             </div>
 
-            <div className="flex gap-4 mb-4 text-sm">
+            <div className="flex flex-wrap gap-4 mb-4 text-sm">
               <span className="flex items-center gap-1.5 text-success"><CheckCircle className="h-4 w-4" /> Benar</span>
+              <span className="flex items-center gap-1.5 text-warning"><AlertCircle className="h-4 w-4" /> Benar Sebagian</span>
               <span className="flex items-center gap-1.5 text-destructive"><XCircle className="h-4 w-4" /> Salah</span>
               <span className="flex items-center gap-1.5 text-muted-foreground"><MinusCircle className="h-4 w-4" /> Tidak dijawab</span>
             </div>
