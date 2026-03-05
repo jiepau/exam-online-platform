@@ -77,22 +77,33 @@ const ExamPage = () => {
         .eq("exam_id", state.examId)
         .order("sort_order");
       if (data) {
-        setQuestions(
-          data.map((q: any) => ({
-            id: q.id,
-            question_text: q.question_text,
-            options: q.options as string[],
-            sort_order: q.sort_order,
-            image_url: q.image_url || undefined,
-          }))
-        );
+        const qs = data.map((q: any) => ({
+          id: q.id,
+          question_text: q.question_text,
+          options: q.options as string[],
+          sort_order: q.sort_order,
+          image_url: q.image_url || undefined,
+        }));
+        setQuestions(qs);
+
+        // Load saved draft after questions are ready
+        const draft = await loadDraft();
+        if (draft && Object.keys(draft.answers).length > 0) {
+          setAnswers(draft.answers);
+          setFlagged(new Set(draft.flagged));
+          setCurrentIndex(draft.currentIndex);
+          setDraftLoaded(true);
+        }
       }
       setLoadingQ(false);
     };
     fetchQuestions();
-  }, [state, navigate]);
+  }, [state, navigate, loadDraft]);
 
-  const handleSubmitFn = useCallback(async () => {
+  // Keep auto-save state in sync
+  useEffect(() => {
+    updateState({ answers, flagged, currentIndex });
+  }, [answers, flagged, currentIndex, updateState]);
     const total = questions.length;
 
     try {
