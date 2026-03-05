@@ -202,8 +202,8 @@ const ViolationHistory = () => {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={v.violation_count >= 3 ? "destructive" : v.violation_count >= 2 ? "secondary" : "outline"}>
-                        {v.violation_count}/3
+                      <Badge variant={v.violation_count >= 4 ? "destructive" : v.violation_count >= 3 ? "secondary" : "outline"}>
+                        {v.violation_count}/5
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
