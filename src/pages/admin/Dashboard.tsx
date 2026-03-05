@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { FileText, Users, CheckCircle2, Clock, ShieldAlert, AlertTriangle, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
+import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import { Badge } from "@/components/ui/badge";
 
 interface ViolationLog {
@@ -91,6 +92,7 @@ const Dashboard = () => {
 
   return (
     <AdminLayout>
+      <WhatsNewDialog />
       <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard</h2>
       <div className="grid gap-4 sm:grid-cols-3 mb-8">
         {cards.map(({ label, value, icon: Icon, color }) => (
