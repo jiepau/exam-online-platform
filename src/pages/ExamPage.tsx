@@ -386,6 +386,7 @@ const ExamPage = () => {
               text={question.question_text}
               imageUrl={question.image_url}
               options={question.options}
+              questionType={question.question_type as any}
               selectedAnswer={answers[currentIndex]}
               isFlagged={flagged.has(currentIndex)}
               onAnswer={handleAnswer}
