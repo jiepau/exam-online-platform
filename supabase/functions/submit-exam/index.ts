@@ -46,10 +46,10 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch questions with correct answers and type
+    // Fetch questions with correct answers, type, and weight
     const { data: questions, error: qError } = await adminClient
       .from("questions")
-      .select("id, correct_answer, correct_answer_data, question_type, sort_order")
+      .select("id, correct_answer, correct_answer_data, question_type, sort_order, point_weight")
       .eq("exam_id", exam_id)
       .order("sort_order");
 
@@ -60,40 +60,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate score server-side with type-aware grading
+    // Calculate score server-side with type-aware weighted grading
     const total = questions.length;
-    let correct = 0;
+    let correctCount = 0;
+    let totalScore = 0;
+    let maxScore = 0;
 
     questions.forEach((q, i) => {
       const studentAnswer = answers[String(i)];
       const type = q.question_type || "multiple_choice";
+      const weight = q.point_weight || 1;
+      maxScore += weight;
+      let isCorrect = false;
 
       if (type === "multiple_choice" || type === "true_false") {
-        // Simple integer comparison
-        if (studentAnswer === q.correct_answer) correct++;
+        if (studentAnswer === q.correct_answer) isCorrect = true;
       } else if (type === "multiple_select") {
-        // Compare arrays of selected indices
         const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
         const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        // Must match exactly
         if (
           correctIndices.length === studentIndices.length &&
           correctIndices.every((idx: number) => studentIndices.includes(idx))
         ) {
-          correct++;
+          isCorrect = true;
         }
       } else if (type === "short_answer") {
-        // Case-insensitive text comparison with aliases
         const data = q.correct_answer_data || {};
-        const correctAnswer = (data.answer || "").trim().toLowerCase();
+        const correctAns = (data.answer || "").trim().toLowerCase();
         const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
-        const allAccepted = [correctAnswer, ...aliases].filter(Boolean);
+        const allAccepted = [correctAns, ...aliases].filter(Boolean);
         const studentText = (typeof studentAnswer === "string" ? studentAnswer : "").trim().toLowerCase();
         if (studentText && allAccepted.includes(studentText)) {
-          correct++;
+          isCorrect = true;
         }
       } else if (type === "matching") {
-        // Matching: correct order is [0, 1, 2, ...n-1]
         const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
         const expectedOrder = Array.from({ length: studentOrder.length }, (_, i) => i);
         if (
@@ -101,12 +101,17 @@ Deno.serve(async (req) => {
           studentOrder.length === expectedOrder.length &&
           studentOrder.every((v: number, i: number) => v === expectedOrder[i])
         ) {
-          correct++;
+          isCorrect = true;
         }
+      }
+
+      if (isCorrect) {
+        correctCount++;
+        totalScore += weight;
       }
     });
 
-    const score = correct;
+    const score = totalScore;
 
     // Save exam session
     const { data: session, error: sessionError } = await adminClient
@@ -115,7 +120,7 @@ Deno.serve(async (req) => {
         student_id: user.id,
         exam_id,
         score,
-        correct_answers: correct,
+        correct_answers: correctCount,
         total_questions: total,
         finished_at: new Date().toISOString(),
       })
@@ -145,7 +150,7 @@ Deno.serve(async (req) => {
     await adminClient.from("student_answers").insert(answerRows);
 
     return new Response(
-      JSON.stringify({ success: true, score, correct, total }),
+      JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {

@@ -48,6 +48,7 @@ interface QuestionForm {
   image_url?: string;
   question_type: QuestionType;
   correct_answer_data?: any;
+  point_weight: number;
 }
 
 const ExamManager = () => {
@@ -122,6 +123,7 @@ const ExamManager = () => {
         image_url: q.image_url || undefined,
         question_type: q.question_type || "multiple_choice",
         correct_answer_data: q.correct_answer_data || undefined,
+        point_weight: q.point_weight ?? 1,
       })));
     }
   };
@@ -134,7 +136,7 @@ const ExamManager = () => {
       short_answer: { options: [], correct_answer: 0, correct_answer_data: { answer: "", aliases: [] } },
       matching: { options: ["|", "|", "|"], correct_answer: 0, correct_answer_data: null },
     };
-    setQuestions((prev) => [...prev, { question_text: "", question_type: type, image_url: undefined, ...defaults[type] } as QuestionForm]);
+    setQuestions((prev) => [...prev, { question_text: "", question_type: type, image_url: undefined, point_weight: 1, ...defaults[type] } as QuestionForm]);
   };
 
   const updateQuestion = (index: number, field: string, value: any) => {
@@ -220,6 +222,7 @@ const ExamManager = () => {
           correct_answer: 0,
           question_type: "short_answer",
           correct_answer_data: { answer, aliases: [] },
+          point_weight: 1,
         });
         continue;
       }
@@ -251,6 +254,7 @@ const ExamManager = () => {
           options: ["Benar", "Salah"],
           correct_answer: starredIndices.length > 0 ? starredIndices[0] : 0,
           question_type: "true_false",
+          point_weight: 1,
         });
         continue;
       }
@@ -264,6 +268,7 @@ const ExamManager = () => {
           correct_answer: 0,
           question_type: "multiple_select",
           correct_answer_data: starredIndices,
+          point_weight: 1,
         });
         continue;
       }
@@ -276,6 +281,7 @@ const ExamManager = () => {
         options: options.slice(0, Math.max(4, options.length)),
         correct_answer: correctAnswer,
         question_type: "multiple_choice",
+        point_weight: 1,
       });
     }
     return questions;
@@ -296,6 +302,7 @@ const ExamManager = () => {
           correct_answer: item.correct_answer ?? item.jawaban ?? 0,
           question_type: item.question_type || "multiple_choice",
           correct_answer_data: item.correct_answer_data || undefined,
+          point_weight: item.point_weight ?? 1,
         }));
         setQuestions((prev) => [...prev, ...imported]);
         toast.success(`${imported.length} soal berhasil diimport`);
@@ -371,6 +378,7 @@ Jawaban: Jakarta
       sort_order: i,
       question_type: q.question_type,
       correct_answer_data: q.correct_answer_data || null,
+      point_weight: q.point_weight || 1,
     }));
     if (toInsert.length > 0) {
       const { error } = await supabase.from("questions").insert(toInsert as any);
@@ -428,6 +436,9 @@ Jawaban: Jakarta
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-primary">Soal {qi + 1}</span>
             <Badge variant="secondary" className="text-xs">{QUESTION_TYPE_LABELS[type]}</Badge>
+            {q.point_weight > 1 && (
+              <Badge variant="outline" className="text-xs">{q.point_weight} poin</Badge>
+            )}
           </div>
           <div className="flex items-center gap-1">
             <Select value={type} onValueChange={(v) => {
@@ -455,6 +466,19 @@ Jawaban: Jakarta
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Point weight */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Bobot poin:</label>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={q.point_weight}
+            onChange={(e) => updateQuestion(qi, "point_weight", Math.max(1, Number(e.target.value) || 1))}
+            className="h-8 w-20 text-sm"
+          />
         </div>
 
         {/* Question text */}
