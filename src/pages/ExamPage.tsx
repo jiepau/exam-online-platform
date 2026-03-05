@@ -342,7 +342,11 @@ const ExamPage = () => {
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.values(answers).filter((a) => {
+    if (typeof a === "string") return a.trim().length > 0;
+    if (Array.isArray(a)) return a.length > 0;
+    return a !== undefined && a !== null;
+  }).length;
 
   return (
     <div className="min-h-screen bg-background select-none">
