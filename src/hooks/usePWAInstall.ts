@@ -5,6 +5,8 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+const DISMISS_KEY = "pwa-install-dismissed-v2";
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallDialog, setShowInstallDialog] = useState(false);
@@ -16,7 +18,7 @@ export function usePWAInstall() {
       setDeferredPrompt(promptEvent);
 
       // Show dialog if user hasn't dismissed before
-      const dismissed = localStorage.getItem("pwa-install-dismissed");
+      const dismissed = localStorage.getItem(DISMISS_KEY);
       if (!dismissed) {
         setShowInstallDialog(true);
       }
@@ -38,7 +40,7 @@ export function usePWAInstall() {
 
   const dismiss = () => {
     setShowInstallDialog(false);
-    localStorage.setItem("pwa-install-dismissed", "true");
+    localStorage.setItem(DISMISS_KEY, "true");
   };
 
   const isInstalled = window.matchMedia("(display-mode: standalone)").matches;
