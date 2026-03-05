@@ -125,6 +125,9 @@ const ExamPage = () => {
         console.error("Failed to submit exam:", error);
       }
 
+      // Clear draft after successful submission
+      await clearDraft();
+
       navigate("/result", {
         state: {
           studentName,
@@ -137,7 +140,7 @@ const ExamPage = () => {
         state: { studentName, examTitle },
       });
     }
-  }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
+  }, [answers, questions, navigate, studentName, examTitle, state, flagged, saveNow, clearDraft]);
 
   // Anti-cheat
   const { violations, isFullscreen, enterFullscreen, maxViolations, lastViolationType } = useAntiCheat(
