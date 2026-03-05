@@ -136,7 +136,7 @@ const ExamManager = () => {
       short_answer: { options: [], correct_answer: 0, correct_answer_data: { answer: "", aliases: [] } },
       matching: { options: ["|", "|", "|"], correct_answer: 0, correct_answer_data: null },
     };
-    setQuestions((prev) => [...prev, { question_text: "", question_type: type, image_url: undefined, ...defaults[type] } as QuestionForm]);
+    setQuestions((prev) => [...prev, { question_text: "", question_type: type, image_url: undefined, point_weight: 1, ...defaults[type] } as QuestionForm]);
   };
 
   const updateQuestion = (index: number, field: string, value: any) => {
@@ -222,6 +222,7 @@ const ExamManager = () => {
           correct_answer: 0,
           question_type: "short_answer",
           correct_answer_data: { answer, aliases: [] },
+          point_weight: 1,
         });
         continue;
       }
@@ -253,6 +254,7 @@ const ExamManager = () => {
           options: ["Benar", "Salah"],
           correct_answer: starredIndices.length > 0 ? starredIndices[0] : 0,
           question_type: "true_false",
+          point_weight: 1,
         });
         continue;
       }
@@ -266,6 +268,7 @@ const ExamManager = () => {
           correct_answer: 0,
           question_type: "multiple_select",
           correct_answer_data: starredIndices,
+          point_weight: 1,
         });
         continue;
       }
@@ -278,6 +281,7 @@ const ExamManager = () => {
         options: options.slice(0, Math.max(4, options.length)),
         correct_answer: correctAnswer,
         question_type: "multiple_choice",
+        point_weight: 1,
       });
     }
     return questions;
@@ -298,6 +302,7 @@ const ExamManager = () => {
           correct_answer: item.correct_answer ?? item.jawaban ?? 0,
           question_type: item.question_type || "multiple_choice",
           correct_answer_data: item.correct_answer_data || undefined,
+          point_weight: item.point_weight ?? 1,
         }));
         setQuestions((prev) => [...prev, ...imported]);
         toast.success(`${imported.length} soal berhasil diimport`);
