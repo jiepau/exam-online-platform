@@ -8,7 +8,7 @@ export interface ChangelogEntry {
 export const changelog: ChangelogEntry[] = [
   {
     version: "1.0.0",
-    date: "2025-10-02",
+    date: "2026-01-05",
     title: "Rilis Awal",
     changes: [
       "Sistem autentikasi admin (Guru) dan siswa",
@@ -21,7 +21,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.1.0",
-    date: "2025-10-23",
+    date: "2026-01-26",
     title: "Manajemen Siswa & Kelas",
     changes: [
       "Pendaftaran siswa oleh admin (tanpa registrasi mandiri)",
@@ -33,7 +33,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.2.0",
-    date: "2025-11-13",
+    date: "2026-02-16",
     title: "Hasil & Penilaian",
     changes: [
       "Halaman hasil ujian untuk admin",
@@ -45,7 +45,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.3.0",
-    date: "2025-12-04",
+    date: "2026-03-09",
     title: "Anti-Cheat & Keamanan",
     changes: [
       "Sistem anti-cheat: deteksi pindah tab/minimize",
@@ -57,7 +57,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.4.0",
-    date: "2025-12-25",
+    date: "2026-03-30",
     title: "Tipe Soal Baru",
     changes: [
       "Soal Benar/Salah (True/False)",
@@ -69,7 +69,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.5.0",
-    date: "2026-01-15",
+    date: "2026-04-20",
     title: "Ruang Ujian & PWA",
     changes: [
       "Manajemen ruang ujian",
@@ -81,7 +81,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.6.0",
-    date: "2026-02-05",
+    date: "2026-05-11",
     title: "Monitoring & Pengaturan",
     changes: [
       "Live monitor ujian (realtime)",
@@ -93,7 +93,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.7.0",
-    date: "2026-02-26",
+    date: "2026-06-01",
     title: "Riwayat Pelanggaran & Penyempurnaan",
     changes: [
       "Halaman riwayat pelanggaran dengan filter",
@@ -105,7 +105,7 @@ export const changelog: ChangelogEntry[] = [
   },
   {
     version: "1.8.0",
-    date: "2026-03-05",
+    date: "2026-06-22",
     title: "Bobot Poin & Peningkatan Penilaian",
     changes: [
       "Bobot poin per soal (point weight) — soal bernilai berbeda",
