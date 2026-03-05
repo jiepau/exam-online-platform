@@ -34,6 +34,7 @@ interface DBQuestion {
   options: string[];
   sort_order: number;
   image_url?: string;
+  question_type?: string;
 }
 
 const ExamPage = () => {
@@ -49,7 +50,7 @@ const ExamPage = () => {
 
   const [questions, setQuestions] = useState<DBQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, number | number[] | string>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [loadingQ, setLoadingQ] = useState(true);
   const [examStarted, setExamStarted] = useState(false);
