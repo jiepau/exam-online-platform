@@ -248,6 +248,7 @@ export type Database = {
           id: string
           image_url: string | null
           options: Json
+          point_weight: number
           question_text: string
           question_type: string
           sort_order: number
@@ -260,6 +261,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           options?: Json
+          point_weight?: number
           question_text: string
           question_type?: string
           sort_order?: number
@@ -272,6 +274,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           options?: Json
+          point_weight?: number
           question_text?: string
           question_type?: string
           sort_order?: number
@@ -450,6 +453,7 @@ export type Database = {
           id: string | null
           image_url: string | null
           options: Json | null
+          point_weight: number | null
           question_text: string | null
           question_type: string | null
           sort_order: number | null
@@ -460,6 +464,7 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           options?: Json | null
+          point_weight?: number | null
           question_text?: string | null
           question_type?: string | null
           sort_order?: number | null
@@ -470,6 +475,7 @@ export type Database = {
           id?: string | null
           image_url?: string | null
           options?: Json | null
+          point_weight?: number | null
           question_text?: string | null
           question_type?: string | null
           sort_order?: number | null
