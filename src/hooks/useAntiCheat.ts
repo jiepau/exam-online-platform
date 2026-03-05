@@ -73,15 +73,36 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
       e.preventDefault();
     };
 
-    // Detect tab switch / window blur
+    // Detect tab switch / window blur (with 15s tolerance)
+    let blurTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const clearBlurTimer = () => {
+      if (blurTimer) {
+        clearTimeout(blurTimer);
+        blurTimer = null;
+      }
+    };
+
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        addViolation("Berpindah tab/jendela");
+        clearBlurTimer();
+        blurTimer = setTimeout(() => {
+          addViolation("Berpindah tab/jendela");
+        }, 15000);
+      } else {
+        clearBlurTimer();
       }
     };
 
     const handleBlur = () => {
-      addViolation("Berpindah tab/jendela");
+      clearBlurTimer();
+      blurTimer = setTimeout(() => {
+        addViolation("Berpindah tab/jendela");
+      }, 15000);
+    };
+
+    const handleFocus = () => {
+      clearBlurTimer();
     };
 
     // Detect fullscreen exit
@@ -127,8 +148,10 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("selectstart", handleSelectStart);
     window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
 
     return () => {
+      clearBlurTimer();
       document.removeEventListener("copy", preventCopyPaste);
       document.removeEventListener("paste", preventCopyPaste);
       document.removeEventListener("cut", preventCopyPaste);
@@ -139,6 +162,7 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
       document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("selectstart", handleSelectStart);
       window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [active, addViolation]);
 
