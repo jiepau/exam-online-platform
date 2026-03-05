@@ -120,12 +120,17 @@ Deno.serve(async (req) => {
 
     // Save individual answers
     const flaggedSet = new Set(flagged_indices || []);
-    const answerRows = questions.map((q, i) => ({
-      session_id: session.id,
-      question_id: q.id,
-      selected_answer: typeof answers[String(i)] === "number" ? answers[String(i)] : null,
-      is_flagged: flaggedSet.has(i),
-    }));
+    const answerRows = questions.map((q, i) => {
+      const ans = answers[String(i)];
+      const type = q.question_type || "multiple_choice";
+      return {
+        session_id: session.id,
+        question_id: q.id,
+        selected_answer: typeof ans === "number" ? ans : null,
+        selected_answer_data: (type === "multiple_select" || type === "short_answer") ? ans : null,
+        is_flagged: flaggedSet.has(i),
+      };
+    });
     await adminClient.from("student_answers").insert(answerRows);
 
     return new Response(
