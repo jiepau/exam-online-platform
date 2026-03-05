@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import SplashScreen from "@/components/SplashScreen";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
 import ExamPage from "./pages/ExamPage";
@@ -43,6 +44,7 @@ const App = () => {
         <Toaster />
         <Sonner />
         {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
+        <PWAInstallPrompt />
         <BrowserRouter>
           <AuthProvider>
             <ThemeProvider>
