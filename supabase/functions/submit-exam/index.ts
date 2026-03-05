@@ -66,7 +66,8 @@ Deno.serve(async (req) => {
     let totalScore = 0;
     let maxScore = 0;
 
-    questions.forEach((q, i) => {
+    questions.forEach((q, _i) => {
+      const studentAnswer = answers[String(_i)];
       const studentAnswer = answers[String(i)];
       const type = q.question_type || "multiple_choice";
       const weight = q.point_weight || 1;
@@ -76,14 +77,19 @@ Deno.serve(async (req) => {
       if (type === "multiple_choice" || type === "true_false") {
         if (studentAnswer === q.correct_answer) isCorrect = true;
       } else if (type === "multiple_select") {
+        // Partial scoring: proportion of correct selections
         const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
         const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        if (
-          correctIndices.length === studentIndices.length &&
-          correctIndices.every((idx: number) => studentIndices.includes(idx))
-        ) {
-          isCorrect = true;
+        if (studentIndices.length > 0 && correctIndices.length > 0) {
+          const correctHits = studentIndices.filter((idx: number) => correctIndices.includes(idx)).length;
+          const wrongHits = studentIndices.filter((idx: number) => !correctIndices.includes(idx)).length;
+          const partialRatio = Math.max(0, (correctHits - wrongHits) / correctIndices.length);
+          totalScore += weight * partialRatio;
+          if (partialRatio === 1) { isCorrect = true; correctCount++; }
+          else if (partialRatio > 0) { /* partial, not counted as fully correct */ }
         }
+        // skip the final isCorrect block for this type
+        return;
       } else if (type === "short_answer") {
         const data = q.correct_answer_data || {};
         const correctAns = (data.answer || "").trim().toLowerCase();
@@ -94,15 +100,17 @@ Deno.serve(async (req) => {
           isCorrect = true;
         }
       } else if (type === "matching") {
+        // Partial scoring: proportion of correct pairs
         const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        const expectedOrder = Array.from({ length: studentOrder.length }, (_, i) => i);
-        if (
-          studentOrder.length > 0 &&
-          studentOrder.length === expectedOrder.length &&
-          studentOrder.every((v: number, i: number) => v === expectedOrder[i])
-        ) {
-          isCorrect = true;
+        if (studentOrder.length > 0) {
+          const totalPairs = studentOrder.length;
+          const correctPairs = studentOrder.filter((v: number, i: number) => v === i).length;
+          const partialRatio = correctPairs / totalPairs;
+          totalScore += weight * partialRatio;
+          if (partialRatio === 1) { isCorrect = true; correctCount++; }
         }
+        // skip the final isCorrect block for this type
+        return;
       }
 
       if (isCorrect) {
