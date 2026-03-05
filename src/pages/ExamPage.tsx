@@ -172,8 +172,8 @@ const ExamPage = () => {
     }
   );
 
-  const handleAnswer = (optionIndex: number) => {
-    setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }));
+  const handleAnswer = (value: number | number[] | string) => {
+    setAnswers((prev) => ({ ...prev, [currentIndex]: value }));
   };
 
   const handleToggleFlag = () => {
