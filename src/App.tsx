@@ -20,6 +20,7 @@ import ProfileEdit from "./pages/admin/ProfileEdit";
 import StudentResultDetail from "./pages/admin/StudentResultDetail";
 import Settings from "./pages/admin/Settings";
 import ViolationHistory from "./pages/admin/ViolationHistory";
+import LiveMonitor from "./pages/admin/LiveMonitor";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,7 @@ const App = () => {
               <Route path="/exam" element={<ExamPage />} />
               <Route path="/result" element={<ExamResult />} />
               <Route path="/admin" element={<AdminRoute><Dashboard /></AdminRoute>} />
+              <Route path="/admin/monitor" element={<AdminRoute><LiveMonitor /></AdminRoute>} />
               <Route path="/admin/exams" element={<AdminRoute><ExamManager /></AdminRoute>} />
               <Route path="/admin/results" element={<AdminRoute><StudentResults /></AdminRoute>} />
               <Route path="/admin/results/:sessionId" element={<AdminRoute><StudentResultDetail /></AdminRoute>} />
