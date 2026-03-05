@@ -169,6 +169,11 @@ const StudentResultDetail = () => {
                 {typeLabel}
               </span>
             )}
+            {weight > 1 && (
+              <span className="ml-1 inline-block rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                {weight} poin
+              </span>
+            )}
           </div>
           <div className="shrink-0">
             {isUnanswered ? <MinusCircle className="h-5 w-5 text-muted-foreground" /> :
