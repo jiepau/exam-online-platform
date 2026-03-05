@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
         student_id: user.id,
         exam_id,
         score,
-        correct_answers: correct,
+        correct_answers: correctCount,
         total_questions: total,
         finished_at: new Date().toISOString(),
       })
