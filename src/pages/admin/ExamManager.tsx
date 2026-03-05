@@ -48,6 +48,7 @@ interface QuestionForm {
   image_url?: string;
   question_type: QuestionType;
   correct_answer_data?: any;
+  point_weight: number;
 }
 
 const ExamManager = () => {
@@ -122,6 +123,7 @@ const ExamManager = () => {
         image_url: q.image_url || undefined,
         question_type: q.question_type || "multiple_choice",
         correct_answer_data: q.correct_answer_data || undefined,
+        point_weight: q.point_weight ?? 1,
       })));
     }
   };
@@ -371,6 +373,7 @@ Jawaban: Jakarta
       sort_order: i,
       question_type: q.question_type,
       correct_answer_data: q.correct_answer_data || null,
+      point_weight: q.point_weight || 1,
     }));
     if (toInsert.length > 0) {
       const { error } = await supabase.from("questions").insert(toInsert as any);
@@ -455,6 +458,19 @@ Jawaban: Jakarta
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Point weight */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Bobot poin:</label>
+          <Input
+            type="number"
+            min={1}
+            max={100}
+            value={q.point_weight}
+            onChange={(e) => updateQuestion(qi, "point_weight", Math.max(1, Number(e.target.value) || 1))}
+            className="h-8 w-20 text-sm"
+          />
         </div>
 
         {/* Question text */}
