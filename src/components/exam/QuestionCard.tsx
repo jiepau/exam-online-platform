@@ -2,8 +2,9 @@ import { Flag } from "lucide-react";
 import MathText from "./MathText";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import MatchingQuestion from "./MatchingQuestion";
 
-type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer";
+type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "matching";
 
 interface QuestionCardProps {
   questionNumber: number;
@@ -155,6 +156,13 @@ const QuestionCard = ({
       {(questionType === "multiple_choice" || questionType === "true_false") && renderMultipleChoice()}
       {questionType === "multiple_select" && renderMultipleSelect()}
       {questionType === "short_answer" && renderShortAnswer()}
+      {questionType === "matching" && (
+        <MatchingQuestion
+          options={options}
+          selectedAnswer={Array.isArray(selectedAnswer) ? selectedAnswer as number[] : undefined}
+          onAnswer={(val) => onAnswer(val)}
+        />
+      )}
     </div>
   );
 };
