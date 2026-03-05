@@ -107,7 +107,7 @@ const StudentResultDetail = () => {
     fetchDetail();
   }, [sessionId]);
 
-  const isCorrectAnswer = (q: AnswerDetail): boolean | null => {
+  const isCorrectAnswer = (q: AnswerDetail): boolean | null | "partial" => {
     const type = q.question_type;
     if (type === "multiple_choice" || type === "true_false") {
       if (q.selected_answer === null) return null;
