@@ -114,7 +114,7 @@ const ExamPage = () => {
   const { violations, isFullscreen, enterFullscreen, maxViolations, lastViolationType } = useAntiCheat(
     examStarted,
     {
-      maxViolations: 3,
+      maxViolations: 5,
       onViolation: async (type, count) => {
         // Log violation to database
         try {

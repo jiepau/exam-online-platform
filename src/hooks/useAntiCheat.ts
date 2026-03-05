@@ -33,10 +33,11 @@ interface AntiCheatOptions {
 }
 
 export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) => {
-  const { onViolation, maxViolations = 3, onMaxViolations } = options;
+  const { onViolation, maxViolations = 5, onMaxViolations } = options;
   const [violations, setViolations] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [lastViolationType, setLastViolationType] = useState<string | null>(null);
+  const [lastViolationTime, setLastViolationTime] = useState(0);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -67,23 +68,31 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
 
   const addViolation = useCallback(
     (type: string) => {
-      setViolations((prev) => {
-        const next = prev + 1;
-        setLastViolationType(type);
-        onViolation?.(type, next);
+      // Cooldown: ignore violations within 5 seconds of each other to prevent double-counting
+      const now = Date.now();
+      setLastViolationTime((prevTime) => {
+        if (now - prevTime < 5000) return prevTime; // skip, too soon
 
-        // Play alarm sound for supervisor
-        playAlarmSound(next);
+        setViolations((prev) => {
+          const next = prev + 1;
+          setLastViolationType(type);
+          onViolation?.(type, next);
 
-        if (next === 1) {
-          toast.warning(`⚠️ Peringatan: ${type}. Pelanggaran ${next}/${maxViolations}`);
-        } else if (next < maxViolations) {
-          toast.error(`🚨 ${type}! Pelanggaran ${next}/${maxViolations}. Ujian akan otomatis dikumpulkan.`);
-        } else {
-          toast.error("🚨 Batas pelanggaran tercapai! Ujian akan dikumpulkan otomatis.");
-          onMaxViolations?.();
-        }
-        return next;
+          // Play alarm sound for supervisor
+          playAlarmSound(next);
+
+          if (next === 1) {
+            toast.warning(`⚠️ Peringatan: ${type}. Pelanggaran ${next}/${maxViolations}`);
+          } else if (next < maxViolations) {
+            toast.error(`🚨 ${type}! Pelanggaran ${next}/${maxViolations}. Ujian akan otomatis dikumpulkan.`);
+          } else {
+            toast.error("🚨 Batas pelanggaran tercapai! Ujian akan dikumpulkan otomatis.");
+            onMaxViolations?.();
+          }
+          return next;
+        });
+
+        return now;
       });
     },
     [maxViolations, onViolation, onMaxViolations]
