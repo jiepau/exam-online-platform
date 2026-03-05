@@ -36,6 +36,7 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
   const { onViolation, maxViolations = 3, onMaxViolations } = options;
   const [violations, setViolations] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [lastViolationType, setLastViolationType] = useState<string | null>(null);
 
   const enterFullscreen = useCallback(async () => {
     try {
@@ -68,6 +69,7 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
     (type: string) => {
       setViolations((prev) => {
         const next = prev + 1;
+        setLastViolationType(type);
         onViolation?.(type, next);
 
         // Play alarm sound for supervisor
@@ -194,5 +196,5 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
     };
   }, [active, addViolation]);
 
-  return { violations, isFullscreen, enterFullscreen, exitFullscreen, maxViolations };
+  return { violations, isFullscreen, enterFullscreen, exitFullscreen, maxViolations, lastViolationType };
 };

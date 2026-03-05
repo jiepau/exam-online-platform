@@ -356,6 +356,44 @@ export type Database = {
         }
         Relationships: []
       }
+      violation_logs: {
+        Row: {
+          created_at: string
+          exam_id: string
+          id: string
+          student_id: string
+          student_name: string
+          violation_count: number
+          violation_type: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          id?: string
+          student_id: string
+          student_name?: string
+          violation_count?: number
+          violation_type: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          id?: string
+          student_id?: string
+          student_name?: string
+          violation_count?: number
+          violation_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "violation_logs_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       questions_student: {
