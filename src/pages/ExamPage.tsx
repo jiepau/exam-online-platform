@@ -74,7 +74,7 @@ const ExamPage = () => {
     const fetchQuestions = async () => {
       const { data } = await supabase
         .from("questions_student" as any)
-        .select("id, exam_id, question_text, options, sort_order, image_url")
+        .select("id, exam_id, question_text, options, sort_order, image_url, question_type")
         .eq("exam_id", state.examId)
         .order("sort_order");
       if (data) {
@@ -84,6 +84,7 @@ const ExamPage = () => {
           options: q.options as string[],
           sort_order: q.sort_order,
           image_url: q.image_url || undefined,
+          question_type: q.question_type || "multiple_choice",
         }));
         setQuestions(qs);
 
