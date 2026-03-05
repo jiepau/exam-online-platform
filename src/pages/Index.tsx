@@ -1,13 +1,43 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, GraduationCap, Shield, Users } from "lucide-react";
+import { BookOpen, Download, GraduationCap, Shield, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { usePWAInstall } from "@/hooks/usePWAInstall";
 import logoMadrasah from "@/assets/logo-madrasah.png";
+
+const InstallBanner = () => {
+  const { canInstall, install, isInstalled } = usePWAInstall();
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!canInstall || isInstalled || dismissed) return null;
+
+  return (
+    <div className="bg-primary/10 border-b border-primary/20">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-2.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <Download className="h-4 w-4 shrink-0 text-primary" />
+          <p className="text-sm text-foreground truncate">
+            <span className="font-medium">Install aplikasi</span>
+            <span className="hidden sm:inline"> untuk pengalaman ujian lebih stabil</span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button size="sm" variant="default" className="h-7 text-xs px-3" onClick={install}>
+            Install
+          </Button>
+          <button onClick={() => setDismissed(true)} className="text-muted-foreground hover:text-foreground">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Index = () => {
   const [token, setToken] = useState("");
@@ -117,6 +147,9 @@ const Index = () => {
           </div>
         </div>
       </header>
+
+      {/* Install Banner */}
+      <InstallBanner />
 
       {/* Hero */}
       <main className="mx-auto max-w-6xl px-6 py-12">
