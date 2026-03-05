@@ -313,6 +313,7 @@ export type Database = {
           is_flagged: boolean
           question_id: string
           selected_answer: number | null
+          selected_answer_data: Json | null
           session_id: string
         }
         Insert: {
@@ -320,6 +321,7 @@ export type Database = {
           is_flagged?: boolean
           question_id: string
           selected_answer?: number | null
+          selected_answer_data?: Json | null
           session_id: string
         }
         Update: {
@@ -327,6 +329,7 @@ export type Database = {
           is_flagged?: boolean
           question_id?: string
           selected_answer?: number | null
+          selected_answer_data?: Json | null
           session_id?: string
         }
         Relationships: [
