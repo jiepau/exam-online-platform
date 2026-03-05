@@ -13,7 +13,7 @@ const ViolationOverlay = ({ violationType, violationCount, maxViolations }: Viol
   useEffect(() => {
     if (violationType && violationCount > 0) {
       setVisible(true);
-      const timer = setTimeout(() => setVisible(false), 5000);
+      const timer = setTimeout(() => setVisible(false), 8000);
       return () => clearTimeout(timer);
     }
   }, [violationType, violationCount]);
