@@ -593,6 +593,47 @@ Jawaban: Jakarta
             <p className="text-xs text-muted-foreground">
               💡 Pencocokan tidak case-sensitive. Tambahkan variasi ejaan jika perlu.
             </p>
+           </div>
+        )}
+
+        {type === "matching" && (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">Isi pasangan kiri dan kanan. Urutan yang benar adalah pasangan yang sesuai.</p>
+            {q.options.map((opt, oi) => {
+              const parts = (opt || "").split("|");
+              const left = parts[0] || "";
+              const right = parts[1] || "";
+              return (
+                <div key={oi} className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {oi + 1}
+                  </span>
+                  <Input
+                    value={left}
+                    onChange={(e) => updateOption(qi, oi, `${e.target.value}|${right}`)}
+                    placeholder={`Pernyataan ${oi + 1}`}
+                    className="h-9 flex-1"
+                  />
+                  <span className="text-muted-foreground text-sm">→</span>
+                  <Input
+                    value={right}
+                    onChange={(e) => updateOption(qi, oi, `${left}|${e.target.value}`)}
+                    placeholder={`Jawaban ${oi + 1}`}
+                    className="h-9 flex-1"
+                  />
+                  {q.options.length > 2 && (
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeOption(qi, oi)} className="text-muted-foreground">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
+            {q.options.length < 8 && (
+              <Button type="button" variant="ghost" size="sm" onClick={() => addOption(qi)} className="text-xs gap-1">
+                <Plus className="h-3 w-3" /> Tambah Pasangan
+              </Button>
+            )}
           </div>
         )}
       </div>
