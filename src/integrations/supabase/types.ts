@@ -242,32 +242,38 @@ export type Database = {
       questions: {
         Row: {
           correct_answer: number
+          correct_answer_data: Json | null
           created_at: string
           exam_id: string
           id: string
           image_url: string | null
           options: Json
           question_text: string
+          question_type: string
           sort_order: number
         }
         Insert: {
           correct_answer: number
+          correct_answer_data?: Json | null
           created_at?: string
           exam_id: string
           id?: string
           image_url?: string | null
           options?: Json
           question_text: string
+          question_type?: string
           sort_order?: number
         }
         Update: {
           correct_answer?: number
+          correct_answer_data?: Json | null
           created_at?: string
           exam_id?: string
           id?: string
           image_url?: string | null
           options?: Json
           question_text?: string
+          question_type?: string
           sort_order?: number
         }
         Relationships: [
@@ -307,6 +313,7 @@ export type Database = {
           is_flagged: boolean
           question_id: string
           selected_answer: number | null
+          selected_answer_data: Json | null
           session_id: string
         }
         Insert: {
@@ -314,6 +321,7 @@ export type Database = {
           is_flagged?: boolean
           question_id: string
           selected_answer?: number | null
+          selected_answer_data?: Json | null
           session_id: string
         }
         Update: {
@@ -321,6 +329,7 @@ export type Database = {
           is_flagged?: boolean
           question_id?: string
           selected_answer?: number | null
+          selected_answer_data?: Json | null
           session_id?: string
         }
         Relationships: [
@@ -442,6 +451,7 @@ export type Database = {
           image_url: string | null
           options: Json | null
           question_text: string | null
+          question_type: string | null
           sort_order: number | null
         }
         Insert: {
@@ -451,6 +461,7 @@ export type Database = {
           image_url?: string | null
           options?: Json | null
           question_text?: string | null
+          question_type?: string | null
           sort_order?: number | null
         }
         Update: {
@@ -460,6 +471,7 @@ export type Database = {
           image_url?: string | null
           options?: Json | null
           question_text?: string | null
+          question_type?: string | null
           sort_order?: number | null
         }
         Relationships: [

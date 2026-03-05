@@ -2,13 +2,13 @@ import { useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AutoSaveState {
-  answers: Record<number, number>;
+  answers: Record<number, number | number[] | string>;
   flagged: Set<number>;
   currentIndex: number;
 }
 
 interface SavedDraft {
-  answers: Record<number, number>;
+  answers: Record<number, number | number[] | string>;
   flagged: number[];
   currentIndex: number;
 }

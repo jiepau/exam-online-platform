@@ -12,7 +12,10 @@ interface AnswerDetail {
   question_text: string;
   options: string[];
   correct_answer: number;
+  correct_answer_data: any;
+  question_type: string;
   selected_answer: number | null;
+  selected_answer_data: any;
 }
 
 interface SessionInfo {
@@ -27,7 +30,7 @@ interface SessionInfo {
   finished_at: string | null;
 }
 
-const LABELS = ["A", "B", "C", "D"];
+const LABELS = ["A", "B", "C", "D", "E", "F"];
 
 const StudentResultDetail = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -40,27 +43,19 @@ const StudentResultDetail = () => {
     if (!sessionId) return;
     const fetchDetail = async () => {
       setLoading(true);
-
-      // Fetch session + exam info
       const { data: sess } = await supabase
         .from("exam_sessions")
         .select("*, exams(title, subject)")
         .eq("id", sessionId)
         .single();
-
       if (!sess) { setLoading(false); return; }
 
-      // Fetch student profile
       const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, class_id")
-        .eq("user_id", sess.student_id)
-        .single();
+        .from("profiles").select("full_name, class_id").eq("user_id", sess.student_id).single();
 
       let className = "-";
       if (profile?.class_id) {
-        const { data: cls } = await supabase
-          .from("classes").select("name").eq("id", profile.class_id).single();
+        const { data: cls } = await supabase.from("classes").select("name").eq("id", profile.class_id).single();
         if (cls) className = cls.name;
       }
 
@@ -76,29 +71,33 @@ const StudentResultDetail = () => {
         finished_at: sess.finished_at,
       });
 
-      // Fetch questions for this exam
       const { data: questions } = await supabase
         .from("questions")
-        .select("id, sort_order, question_text, options, correct_answer")
+        .select("id, sort_order, question_text, options, correct_answer, correct_answer_data, question_type")
         .eq("exam_id", (sess as any).exam_id)
         .order("sort_order");
 
-      // Fetch student answers
       const { data: studentAnswers } = await supabase
         .from("student_answers")
-        .select("question_id, selected_answer")
+        .select("question_id, selected_answer, selected_answer_data")
         .eq("session_id", sessionId);
 
-      const answerMap = new Map((studentAnswers || []).map((a) => [a.question_id, a.selected_answer]));
+      const answerMap = new Map((studentAnswers || []).map((a: any) => [a.question_id, a]));
 
-      const details: AnswerDetail[] = (questions || []).map((q) => ({
-        question_id: q.id,
-        sort_order: q.sort_order,
-        question_text: q.question_text,
-        options: Array.isArray(q.options) ? (q.options as string[]) : [],
-        correct_answer: q.correct_answer,
-        selected_answer: answerMap.has(q.id) ? answerMap.get(q.id)! : null,
-      }));
+      const details: AnswerDetail[] = (questions || []).map((q: any) => {
+        const sa = answerMap.get(q.id);
+        return {
+          question_id: q.id,
+          sort_order: q.sort_order,
+          question_text: q.question_text,
+          options: Array.isArray(q.options) ? (q.options as string[]) : [],
+          correct_answer: q.correct_answer,
+          correct_answer_data: q.correct_answer_data,
+          question_type: q.question_type || "multiple_choice",
+          selected_answer: sa?.selected_answer ?? null,
+          selected_answer_data: sa?.selected_answer_data ?? null,
+        };
+      });
 
       setAnswers(details);
       setLoading(false);
@@ -106,13 +105,154 @@ const StudentResultDetail = () => {
     fetchDetail();
   }, [sessionId]);
 
-  const score = session?.finished_at && session?.total_questions
-    ? (session.correct_answers || 0)
-    : null;
+  const isCorrectAnswer = (q: AnswerDetail): boolean | null => {
+    const type = q.question_type;
+    if (type === "multiple_choice" || type === "true_false") {
+      if (q.selected_answer === null) return null;
+      return q.selected_answer === q.correct_answer;
+    }
+    if (type === "multiple_select") {
+      const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
+      const studentIndices: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
+      if (studentIndices.length === 0) return null;
+      return correctIndices.length === studentIndices.length && correctIndices.every((i) => studentIndices.includes(i));
+    }
+    if (type === "short_answer") {
+      const studentText = typeof q.selected_answer_data === "string" ? q.selected_answer_data.trim().toLowerCase() : "";
+      if (!studentText) return null;
+      const data = q.correct_answer_data || {};
+      const correct = (data.answer || "").trim().toLowerCase();
+      const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
+      return [correct, ...aliases].filter(Boolean).includes(studentText);
+    }
+    return null;
+  };
+
+  const score = session?.finished_at && session?.total_questions ? (session.correct_answers || 0) : null;
   const percentage = session?.finished_at && session?.total_questions
-    ? Math.round(((session.correct_answers || 0) / session.total_questions) * 100)
-    : null;
+    ? Math.round(((session.correct_answers || 0) / session.total_questions) * 100) : null;
   const passed = (percentage ?? 0) >= 70;
+
+  const renderQuestionResult = (q: AnswerDetail, idx: number) => {
+    const correct = isCorrectAnswer(q);
+    const isUnanswered = correct === null;
+    const isCorrect = correct === true;
+    const type = q.question_type;
+
+    const typeLabel = type === "true_false" ? "B/S" : type === "multiple_select" ? "PG Kompleks" : type === "short_answer" ? "Isian" : "";
+
+    return (
+      <div key={q.question_id}
+        className={`rounded-xl border p-4 ${
+          isUnanswered ? "border-border bg-card" :
+          isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
+        }`}
+      >
+        <div className="flex gap-3 items-start mb-3">
+          <span className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground">
+            {idx + 1}
+          </span>
+          <div className="flex-1 text-sm text-foreground leading-relaxed">
+            <MathText text={q.question_text} />
+            {typeLabel && (
+              <span className="ml-2 inline-block rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground uppercase">
+                {typeLabel}
+              </span>
+            )}
+          </div>
+          <div className="shrink-0">
+            {isUnanswered ? <MinusCircle className="h-5 w-5 text-muted-foreground" /> :
+             isCorrect ? <CheckCircle className="h-5 w-5 text-success" /> :
+             <XCircle className="h-5 w-5 text-destructive" />}
+          </div>
+        </div>
+
+        {/* Multiple Choice / True False */}
+        {(type === "multiple_choice" || type === "true_false") && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-10">
+              {q.options.map((opt, oi) => {
+                const isSelected = q.selected_answer === oi;
+                const isCorrectOpt = q.correct_answer === oi;
+                let optClass = "rounded-lg border px-3 py-1.5 text-sm flex items-center gap-2 ";
+                if (isCorrectOpt) optClass += "border-success/50 bg-success/10 text-success font-semibold";
+                else if (isSelected && !isCorrectOpt) optClass += "border-destructive/50 bg-destructive/10 text-destructive";
+                else optClass += "border-border text-muted-foreground";
+                const label = type === "true_false" ? (oi === 0 ? "B" : "S") : LABELS[oi];
+                return (
+                  <div key={oi} className={optClass}>
+                    <span className="font-bold w-5 shrink-0">{label}.</span>
+                    <span className="flex-1"><MathText text={opt} /></span>
+                    {isCorrectOpt && <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
+                    {isSelected && !isCorrectOpt && <XCircle className="h-3.5 w-3.5 shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+            {!isUnanswered && !isCorrect && (
+              <p className="mt-2 pl-10 text-xs text-success">
+                ✓ Jawaban benar: <strong>{type === "true_false" ? (q.correct_answer === 0 ? "Benar" : "Salah") : LABELS[q.correct_answer]}</strong>
+              </p>
+            )}
+            {isUnanswered && (
+              <p className="mt-2 pl-10 text-xs text-muted-foreground">
+                Tidak dijawab • Jawaban benar: <strong className="text-success">{type === "true_false" ? (q.correct_answer === 0 ? "Benar" : "Salah") : LABELS[q.correct_answer]}</strong>
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Multiple Select */}
+        {type === "multiple_select" && (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-10">
+              {q.options.map((opt, oi) => {
+                const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
+                const studentIndices: number[] = Array.isArray(q.selected_answer_data) ? q.selected_answer_data : [];
+                const isCorrectOpt = correctIndices.includes(oi);
+                const isSelected = studentIndices.includes(oi);
+                let optClass = "rounded-lg border px-3 py-1.5 text-sm flex items-center gap-2 ";
+                if (isCorrectOpt) optClass += "border-success/50 bg-success/10 text-success font-semibold";
+                else if (isSelected && !isCorrectOpt) optClass += "border-destructive/50 bg-destructive/10 text-destructive";
+                else optClass += "border-border text-muted-foreground";
+                return (
+                  <div key={oi} className={optClass}>
+                    <span className="font-bold w-5 shrink-0">{LABELS[oi]}.</span>
+                    <span className="flex-1"><MathText text={opt} /></span>
+                    {isCorrectOpt && <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
+                    {isSelected && !isCorrectOpt && <XCircle className="h-3.5 w-3.5 shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+            {!isUnanswered && !isCorrect && (
+              <p className="mt-2 pl-10 text-xs text-success">
+                ✓ Jawaban benar: <strong>{(q.correct_answer_data || []).map((i: number) => LABELS[i]).join(", ")}</strong>
+              </p>
+            )}
+          </>
+        )}
+
+        {/* Short Answer */}
+        {type === "short_answer" && (
+          <div className="pl-10 space-y-2">
+            <div className={`rounded-lg border px-3 py-2 text-sm ${
+              isUnanswered ? "border-border text-muted-foreground italic" :
+              isCorrect ? "border-success/50 bg-success/10 text-success" :
+              "border-destructive/50 bg-destructive/10 text-destructive"
+            }`}>
+              Jawaban siswa: <strong>{typeof q.selected_answer_data === "string" ? q.selected_answer_data : "(tidak dijawab)"}</strong>
+            </div>
+            {(!isCorrect) && (
+              <p className="text-xs text-success">
+                ✓ Jawaban benar: <strong>{q.correct_answer_data?.answer || "-"}</strong>
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <AdminLayout>
@@ -127,7 +267,6 @@ const StudentResultDetail = () => {
           <div className="text-center text-muted-foreground py-20">Data tidak ditemukan</div>
         ) : (
           <>
-            {/* Session Info Card */}
             <div className="rounded-xl border border-border bg-card p-5 mb-6">
               <div className="flex flex-wrap gap-6 items-start">
                 <div className="flex-1 min-w-0">
@@ -160,77 +299,14 @@ const StudentResultDetail = () => {
               </div>
             </div>
 
-            {/* Legend */}
             <div className="flex gap-4 mb-4 text-sm">
               <span className="flex items-center gap-1.5 text-success"><CheckCircle className="h-4 w-4" /> Benar</span>
               <span className="flex items-center gap-1.5 text-destructive"><XCircle className="h-4 w-4" /> Salah</span>
               <span className="flex items-center gap-1.5 text-muted-foreground"><MinusCircle className="h-4 w-4" /> Tidak dijawab</span>
             </div>
 
-            {/* Questions List */}
             <div className="space-y-4">
-              {answers.map((q, idx) => {
-                const isCorrect = q.selected_answer === q.correct_answer;
-                const isUnanswered = q.selected_answer === null;
-                return (
-                  <div
-                    key={q.question_id}
-                    className={`rounded-xl border p-4 ${
-                      isUnanswered ? "border-border bg-card" :
-                      isCorrect ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"
-                    }`}
-                  >
-                    <div className="flex gap-3 items-start mb-3">
-                      <span className="shrink-0 flex h-7 w-7 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground">
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 text-sm text-foreground leading-relaxed">
-                        <MathText text={q.question_text} />
-                      </div>
-                      <div className="shrink-0">
-                        {isUnanswered ? (
-                          <MinusCircle className="h-5 w-5 text-muted-foreground" />
-                        ) : isCorrect ? (
-                          <CheckCircle className="h-5 w-5 text-success" />
-                        ) : (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-10">
-                      {q.options.map((opt, oi) => {
-                        const isSelected = q.selected_answer === oi;
-                        const isCorrectOpt = q.correct_answer === oi;
-                        let optClass = "rounded-lg border px-3 py-1.5 text-sm flex items-center gap-2 ";
-                        if (isCorrectOpt) optClass += "border-success/50 bg-success/10 text-success font-semibold";
-                        else if (isSelected && !isCorrectOpt) optClass += "border-destructive/50 bg-destructive/10 text-destructive";
-                        else optClass += "border-border text-muted-foreground";
-
-                        return (
-                          <div key={oi} className={optClass}>
-                            <span className="font-bold w-5 shrink-0">{LABELS[oi]}.</span>
-                            <span className="flex-1"><MathText text={opt} /></span>
-                            {isCorrectOpt && <CheckCircle className="h-3.5 w-3.5 shrink-0" />}
-                            {isSelected && !isCorrectOpt && <XCircle className="h-3.5 w-3.5 shrink-0" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {!isUnanswered && !isCorrect && (
-                      <p className="mt-2 pl-10 text-xs text-success">
-                        ✓ Jawaban benar: <strong>{LABELS[q.correct_answer]}</strong>
-                      </p>
-                    )}
-                    {isUnanswered && (
-                      <p className="mt-2 pl-10 text-xs text-muted-foreground">
-                        Tidak dijawab • Jawaban benar: <strong className="text-success">{LABELS[q.correct_answer]}</strong>
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+              {answers.map((q, idx) => renderQuestionResult(q, idx))}
             </div>
           </>
         )}

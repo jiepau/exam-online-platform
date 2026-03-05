@@ -34,6 +34,7 @@ interface DBQuestion {
   options: string[];
   sort_order: number;
   image_url?: string;
+  question_type?: string;
 }
 
 const ExamPage = () => {
@@ -49,7 +50,7 @@ const ExamPage = () => {
 
   const [questions, setQuestions] = useState<DBQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<number, number | number[] | string>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [loadingQ, setLoadingQ] = useState(true);
   const [examStarted, setExamStarted] = useState(false);
@@ -73,7 +74,7 @@ const ExamPage = () => {
     const fetchQuestions = async () => {
       const { data } = await supabase
         .from("questions_student" as any)
-        .select("id, exam_id, question_text, options, sort_order, image_url")
+        .select("id, exam_id, question_text, options, sort_order, image_url, question_type")
         .eq("exam_id", state.examId)
         .order("sort_order");
       if (data) {
@@ -83,6 +84,7 @@ const ExamPage = () => {
           options: q.options as string[],
           sort_order: q.sort_order,
           image_url: q.image_url || undefined,
+          question_type: q.question_type || "multiple_choice",
         }));
         setQuestions(qs);
 
@@ -170,8 +172,8 @@ const ExamPage = () => {
     }
   );
 
-  const handleAnswer = (optionIndex: number) => {
-    setAnswers((prev) => ({ ...prev, [currentIndex]: optionIndex }));
+  const handleAnswer = (value: number | number[] | string) => {
+    setAnswers((prev) => ({ ...prev, [currentIndex]: value }));
   };
 
   const handleToggleFlag = () => {
@@ -340,7 +342,11 @@ const ExamPage = () => {
     );
   }
 
-  const answeredCount = Object.keys(answers).length;
+  const answeredCount = Object.values(answers).filter((a) => {
+    if (typeof a === "string") return a.trim().length > 0;
+    if (Array.isArray(a)) return a.length > 0;
+    return a !== undefined && a !== null;
+  }).length;
 
   return (
     <div className="min-h-screen bg-background select-none">
@@ -384,6 +390,7 @@ const ExamPage = () => {
               text={question.question_text}
               imageUrl={question.image_url}
               options={question.options}
+              questionType={question.question_type as any}
               selectedAnswer={answers[currentIndex]}
               isFlagged={flagged.has(currentIndex)}
               onAnswer={handleAnswer}
