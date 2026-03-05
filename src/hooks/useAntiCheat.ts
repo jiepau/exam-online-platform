@@ -144,12 +144,18 @@ export const useAntiCheat = (active: boolean, options: AntiCheatOptions = {}) =>
       clearBlurTimer();
     };
 
-    // Detect fullscreen exit
+    // Detect fullscreen exit & auto re-enter on mobile
     const handleFullscreenChange = () => {
       const isFull = !!document.fullscreenElement || !!(document as any).webkitFullscreenElement;
       setIsFullscreen(isFull);
       if (!isFull && active) {
         addViolation("Keluar dari fullscreen");
+        // Auto re-enter fullscreen after a short delay (especially useful on mobile)
+        setTimeout(() => {
+          if (active && !document.fullscreenElement) {
+            enterFullscreen();
+          }
+        }, 1500);
       }
     };
 
