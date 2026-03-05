@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
       }
     });
 
-    const score = totalScore;
+    const score = Math.round(totalScore);
 
     // Save exam session
     const { data: session, error: sessionError } = await adminClient
