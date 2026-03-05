@@ -7,6 +7,7 @@ import ExamTimer from "@/components/exam/ExamTimer";
 import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
+import ViolationOverlay from "@/components/exam/ViolationOverlay";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,10 +111,27 @@ const ExamPage = () => {
   }, [answers, questions, navigate, studentName, examTitle, state, flagged]);
 
   // Anti-cheat
-  const { violations, isFullscreen, enterFullscreen, maxViolations } = useAntiCheat(
+  const { violations, isFullscreen, enterFullscreen, maxViolations, lastViolationType } = useAntiCheat(
     examStarted,
     {
       maxViolations: 3,
+      onViolation: async (type, count) => {
+        // Log violation to database
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user && state?.examId) {
+            await supabase.from("violation_logs" as any).insert({
+              student_id: user.id,
+              exam_id: state.examId,
+              violation_type: type,
+              violation_count: count,
+              student_name: studentName,
+            });
+          }
+        } catch (e) {
+          console.error("Failed to log violation:", e);
+        }
+      },
       onMaxViolations: () => {
         handleSubmitFn();
       },
@@ -287,6 +305,11 @@ const ExamPage = () => {
 
   return (
     <div className="min-h-screen bg-background select-none">
+      <ViolationOverlay
+        violationType={lastViolationType}
+        violationCount={violations}
+        maxViolations={maxViolations}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border bg-card/95 backdrop-blur-sm">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
