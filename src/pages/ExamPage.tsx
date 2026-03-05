@@ -104,6 +104,11 @@ const ExamPage = () => {
   useEffect(() => {
     updateState({ answers, flagged, currentIndex });
   }, [answers, flagged, currentIndex, updateState]);
+
+  const handleSubmitFn = useCallback(async () => {
+    // Save one last time before submitting
+    await saveNow();
+
     const total = questions.length;
 
     try {
