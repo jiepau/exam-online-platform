@@ -46,10 +46,10 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch questions with correct answers and type
+    // Fetch questions with correct answers, type, and weight
     const { data: questions, error: qError } = await adminClient
       .from("questions")
-      .select("id, correct_answer, correct_answer_data, question_type, sort_order")
+      .select("id, correct_answer, correct_answer_data, question_type, sort_order, point_weight")
       .eq("exam_id", exam_id)
       .order("sort_order");
 
@@ -60,17 +60,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate score server-side with type-aware grading
+    // Calculate score server-side with type-aware weighted grading
     const total = questions.length;
-    let correct = 0;
+    let correctCount = 0;
+    let totalScore = 0;
+    let maxScore = 0;
 
     questions.forEach((q, i) => {
       const studentAnswer = answers[String(i)];
       const type = q.question_type || "multiple_choice";
+      const weight = q.point_weight || 1;
+      maxScore += weight;
+      let isCorrect = false;
 
       if (type === "multiple_choice" || type === "true_false") {
-        // Simple integer comparison
-        if (studentAnswer === q.correct_answer) correct++;
+        if (studentAnswer === q.correct_answer) isCorrect = true;
       } else if (type === "multiple_select") {
         // Compare arrays of selected indices
         const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
