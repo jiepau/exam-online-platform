@@ -117,6 +117,7 @@ const StudentResults = () => {
           nisn: profile?.nisn || undefined,
           exam_number: profile?.exam_number || undefined,
           student_id: s.student_id,
+          essay_score: s.essay_score ?? null,
         };
       });
 
