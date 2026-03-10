@@ -440,7 +440,8 @@ const StudentResults = () => {
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Kelas</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ujian</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mapel</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Benar</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">PG</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Essay</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Waktu</th>
@@ -449,22 +450,34 @@ const StudentResults = () => {
             </thead>
             <tbody>
               {filtered.map((r) => {
-                const score = calcScore(r);
-                const pct = calcPercentage(r);
-                const passed = (pct ?? 0) >= 70;
+                const pgScore = r.score ?? (r.correct_answers || 0);
+                const essay = r.essay_score ?? null;
+                // We don't have maxScore (question weights) in list view, use score as PG score
+                // For status, use simple calc: finalScore = (pg + essay) / (pg_max + 25) * 100
+                // Since we don't have pg_max here, show raw scores and status from detail
+                const hasEssay = essay !== null;
                 return (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.class_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.exam_title}</td>
                     <td className="px-4 py-3 text-muted-foreground">{r.exam_subject}</td>
-                    <td className="px-4 py-3 text-center">{r.correct_answers ?? "-"}/{r.total_questions ?? "-"}</td>
-                    <td className="px-4 py-3 text-center font-bold text-primary">{score ?? "-"}</td>
+                    <td className="px-4 py-3 text-center">
+                      {r.finished_at ? `${r.correct_answers ?? "-"}/${r.total_questions ?? "-"}` : "-"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      {hasEssay ? <span className="font-bold text-primary">{essay}/25</span> : <span className="text-muted-foreground text-xs">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-center font-bold text-primary">
+                      {r.finished_at ? (r.score ?? "-") : "-"}
+                    </td>
                     <td className="px-4 py-3 text-center">
                       {r.finished_at ? (
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
-                          {passed ? "Lulus" : "Tidak Lulus"}
-                        </span>
+                        hasEssay ? (
+                          <span className="text-xs text-muted-foreground">Lihat detail</span>
+                        ) : (
+                          <span className="text-xs text-warning">Perlu essay</span>
+                        )
                       ) : (
                         <span className="text-xs text-warning">Berlangsung</span>
                       )}
