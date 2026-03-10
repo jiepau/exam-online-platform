@@ -23,6 +23,9 @@ interface SessionResult {
   student_name: string;
   class_name: string;
   class_id: string | null;
+  nisn?: string;
+  exam_number?: string;
+  student_id?: string;
 }
 
 interface ClassOption {
