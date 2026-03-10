@@ -397,6 +397,29 @@ const StudentResultDetail = () => {
           </>
         )}
       </div>
+
+      {session && (
+        <ResultPrinter
+          open={printOpen}
+          onOpenChange={setPrintOpen}
+          result={{
+            student_name: session.student_name,
+            class_name: session.class_name,
+            exam_title: session.exam_title,
+            exam_subject: session.exam_subject,
+            score: earnedScore,
+            correct_answers: session.correct_answers,
+            total_questions: session.total_questions,
+            started_at: session.started_at,
+            finished_at: session.finished_at,
+            maxScore,
+            percentage,
+            passed,
+            nisn: studentExtra.nisn,
+            exam_number: studentExtra.exam_number,
+          }}
+        />
+      )}
     </AdminLayout>
   );
 };
