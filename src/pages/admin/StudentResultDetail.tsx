@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle, Printer } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle, Printer, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import MathText from "@/components/exam/MathText";
-import ResultPrinter from "@/components/admin/ResultPrinter";
+import ResultPrinter, { calcFinalScore } from "@/components/admin/ResultPrinter";
+import { toast } from "sonner";
 
 interface AnswerDetail {
   question_id: string;
