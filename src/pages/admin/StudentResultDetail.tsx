@@ -44,6 +44,8 @@ const StudentResultDetail = () => {
   const [loading, setLoading] = useState(true);
   const [printOpen, setPrintOpen] = useState(false);
   const [studentExtra, setStudentExtra] = useState<{ nisn?: string; exam_number?: string }>({});
+  const [essayScore, setEssayScore] = useState<number | null>(null);
+  const [essaySaving, setEssaySaving] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
