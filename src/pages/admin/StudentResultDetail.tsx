@@ -373,25 +373,38 @@ const StudentResultDetail = () => {
                     {session.finished_at && ` – ${new Date(session.finished_at).toLocaleString("id-ID")}`}
                   </p>
                 </div>
-                <div className="flex gap-4 items-center shrink-0">
+                <div className="flex flex-wrap gap-4 items-center shrink-0">
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Benar</p>
+                    <p className="text-xs text-muted-foreground">PG Benar</p>
                     <p className="text-2xl font-bold text-foreground">
                       {session.correct_answers ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{session.total_questions ?? "-"}</span>
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Skor</p>
-                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
+                    <p className="text-xs text-muted-foreground">Skor PG</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {earnedScore ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{maxScore}</span>
                     </p>
                   </div>
-                  {percentage !== null && (
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Persentase</p>
-                      <p className={`text-2xl font-bold ${passed ? "text-success" : "text-destructive"}`}>{percentage}%</p>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">Essay</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Input
+                        type="number" min={0} max={25}
+                        value={essayScore ?? ""}
+                        onChange={(e) => setEssayScore(e.target.value === "" ? null : Math.min(25, Math.max(0, parseInt(e.target.value) || 0)))}
+                        className="w-14 h-8 text-center text-sm font-bold"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-muted-foreground">/25</span>
                     </div>
-                  )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">Nilai Akhir</p>
+                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
+                      {finalScore}
+                    </p>
+                  </div>
                   {session.finished_at && (
                     <span className={`rounded-full px-3 py-1 text-sm font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {passed ? "Lulus" : "Tidak Lulus"}
