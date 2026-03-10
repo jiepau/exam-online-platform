@@ -26,6 +26,7 @@ interface SessionResult {
   nisn?: string;
   exam_number?: string;
   student_id?: string;
+  essay_score?: number | null;
 }
 
 interface ClassOption {
