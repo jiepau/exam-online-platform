@@ -79,6 +79,7 @@ const StudentResultDetail = () => {
         started_at: sess.started_at,
         finished_at: sess.finished_at,
       });
+      setEssayScore((sess as any).essay_score ?? null);
 
       const { data: questions } = await supabase
         .from("questions")
