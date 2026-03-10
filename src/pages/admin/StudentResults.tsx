@@ -554,6 +554,14 @@ const StudentResults = () => {
         open={batchPrintOpen}
         onOpenChange={setBatchPrintOpen}
         results={batchPrintData}
+        onEssayScoreChange={(idx, score) => {
+          // Update local batch data
+          setBatchPrintData(prev => {
+            const next = [...prev];
+            next[idx] = { ...next[idx], essay_score: score };
+            return next;
+          });
+        }}
       />
     </AdminLayout>
   );
