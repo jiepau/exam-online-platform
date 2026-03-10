@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import MathText from "@/components/exam/MathText";
+import ResultPrinter from "@/components/admin/ResultPrinter";
 
 interface AnswerDetail {
   question_id: string;
@@ -39,6 +40,8 @@ const StudentResultDetail = () => {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [answers, setAnswers] = useState<AnswerDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [studentExtra, setStudentExtra] = useState<{ nisn?: string; exam_number?: string }>({});
 
   useEffect(() => {
     if (!sessionId) return;
@@ -52,7 +55,8 @@ const StudentResultDetail = () => {
       if (!sess) { setLoading(false); return; }
 
       const { data: profile } = await supabase
-        .from("profiles").select("full_name, class_id").eq("user_id", sess.student_id).single();
+        .from("profiles").select("full_name, class_id, nisn, exam_number").eq("user_id", sess.student_id).single();
+      setStudentExtra({ nisn: profile?.nisn || undefined, exam_number: profile?.exam_number || undefined });
 
       let className = "-";
       if (profile?.class_id) {
@@ -323,9 +327,16 @@ const StudentResultDetail = () => {
   return (
     <AdminLayout>
       <div className="mb-4">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 mb-3">
-          <ArrowLeft className="h-4 w-4" /> Kembali
-        </Button>
+        <div className="flex items-center gap-2 mb-3">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Kembali
+          </Button>
+          {session && session.finished_at && (
+            <Button variant="outline" size="sm" className="gap-2 ml-auto" onClick={() => setPrintOpen(true)}>
+              <Printer className="h-4 w-4" /> Cetak Hasil
+            </Button>
+          )}
+        </div>
 
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Memuat data...</div>
@@ -386,6 +397,29 @@ const StudentResultDetail = () => {
           </>
         )}
       </div>
+
+      {session && (
+        <ResultPrinter
+          open={printOpen}
+          onOpenChange={setPrintOpen}
+          result={{
+            student_name: session.student_name,
+            class_name: session.class_name,
+            exam_title: session.exam_title,
+            exam_subject: session.exam_subject,
+            score: earnedScore,
+            correct_answers: session.correct_answers,
+            total_questions: session.total_questions,
+            started_at: session.started_at,
+            finished_at: session.finished_at,
+            maxScore,
+            percentage,
+            passed,
+            nisn: studentExtra.nisn,
+            exam_number: studentExtra.exam_number,
+          }}
+        />
+      )}
     </AdminLayout>
   );
 };
