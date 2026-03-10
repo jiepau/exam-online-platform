@@ -241,6 +241,66 @@ const StudentResults = () => {
             <Download className="h-4 w-4" /> Export Excel
           </Button>
           <Button
+            variant="outline" size="sm" className="gap-2"
+            disabled={filtered.filter(r => r.finished_at).length === 0}
+            onClick={() => {
+              const finishedResults = filtered.filter(r => r.finished_at);
+              // Fetch maxScore per exam for batch - use score as approx (will need questions data)
+              const fetchAndPrint = async () => {
+                // Get unique exam ids
+                const examIds = [...new Set(finishedResults.map(r => {
+                  // We need exam_id - fetch from sessions
+                  return r.id;
+                }))];
+                // Fetch questions weight per exam via sessions
+                const sessionIds = finishedResults.map(r => r.id);
+                const { data: sessions } = await supabase
+                  .from("exam_sessions")
+                  .select("id, exam_id")
+                  .in("id", sessionIds);
+                const examIdMap = new Map((sessions || []).map((s: any) => [s.id, s.exam_id]));
+                const uniqueExamIds = [...new Set([...(examIdMap.values())])];
+                
+                // Fetch total weight per exam
+                const weightMap = new Map<string, number>();
+                for (const examId of uniqueExamIds) {
+                  const { data: questions } = await supabase
+                    .from("questions")
+                    .select("point_weight")
+                    .eq("exam_id", examId);
+                  const total = (questions || []).reduce((sum: number, q: any) => sum + (q.point_weight || 1), 0);
+                  weightMap.set(examId, total);
+                }
+
+                const printData: ResultData[] = finishedResults.map(r => {
+                  const examId = examIdMap.get(r.id) || "";
+                  const maxScore = weightMap.get(examId) || r.total_questions || 0;
+                  const pct = maxScore > 0 ? Math.round(((r.score ?? r.correct_answers ?? 0) / maxScore) * 100) : null;
+                  return {
+                    student_name: r.student_name,
+                    class_name: r.class_name,
+                    exam_title: r.exam_title,
+                    exam_subject: r.exam_subject,
+                    score: r.score,
+                    correct_answers: r.correct_answers,
+                    total_questions: r.total_questions,
+                    started_at: r.started_at,
+                    finished_at: r.finished_at,
+                    maxScore,
+                    percentage: pct,
+                    nisn: r.nisn,
+                    exam_number: r.exam_number,
+                  };
+                });
+                setBatchPrintData(printData);
+                setBatchPrintOpen(true);
+              };
+              fetchAndPrint();
+            }}
+          >
+            <Printer className="h-4 w-4" /> Cetak Hasil ({filtered.filter(r => r.finished_at).length})
+          </Button>
+          <Button
             variant="destructive" size="sm" className="gap-2"
             disabled={filtered.length === 0}
             onClick={() => setDeleteAllConfirm(true)}
