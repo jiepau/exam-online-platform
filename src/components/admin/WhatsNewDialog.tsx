@@ -40,7 +40,7 @@ const WhatsNewDialog = ({ externalOpen, onExternalClose }: WhatsNewDialogProps =
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         {/* Header */}
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -54,7 +54,7 @@ const WhatsNewDialog = ({ externalOpen, onExternalClose }: WhatsNewDialogProps =
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
+        <ScrollArea className="flex-1 px-6 py-4 overflow-y-auto" style={{ maxHeight: "calc(85vh - 160px)" }}>
           {/* Latest version - always expanded */}
           <VersionBlock entry={latestEntry} isLatest />
 
