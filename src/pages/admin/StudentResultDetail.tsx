@@ -40,6 +40,8 @@ const StudentResultDetail = () => {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [answers, setAnswers] = useState<AnswerDetail[]>([]);
   const [loading, setLoading] = useState(true);
+  const [printOpen, setPrintOpen] = useState(false);
+  const [studentExtra, setStudentExtra] = useState<{ nisn?: string; exam_number?: string }>({});
 
   useEffect(() => {
     if (!sessionId) return;
