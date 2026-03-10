@@ -55,7 +55,8 @@ const StudentResultDetail = () => {
       if (!sess) { setLoading(false); return; }
 
       const { data: profile } = await supabase
-        .from("profiles").select("full_name, class_id").eq("user_id", sess.student_id).single();
+        .from("profiles").select("full_name, class_id, nisn, exam_number").eq("user_id", sess.student_id).single();
+      setStudentExtra({ nisn: profile?.nisn || undefined, exam_number: profile?.exam_number || undefined });
 
       let className = "-";
       if (profile?.class_id) {
