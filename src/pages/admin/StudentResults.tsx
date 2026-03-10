@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw } from "lucide-react";
+import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ResultPrinter, { type ResultData } from "@/components/admin/ResultPrinter";
 
 interface SessionResult {
   id: string;
@@ -22,6 +23,9 @@ interface SessionResult {
   student_name: string;
   class_name: string;
   class_id: string | null;
+  nisn?: string;
+  exam_number?: string;
+  student_id?: string;
 }
 
 interface ClassOption {
@@ -49,7 +53,8 @@ const StudentResults = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
-
+  const [batchPrintOpen, setBatchPrintOpen] = useState(false);
+  const [batchPrintData, setBatchPrintData] = useState<ResultData[]>([]);
   const handleExportExcel = (data: SessionResult[], label: string) => {
     exportToExcel({
       filename: `hasil-ujian-${label}.xlsx`,
@@ -92,7 +97,7 @@ const StudentResults = () => {
     if (sessions) {
       const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
       const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name, class_id").in("user_id", studentIds);
+        .from("profiles").select("user_id, full_name, class_id, nisn, exam_number").in("user_id", studentIds);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
@@ -108,6 +113,9 @@ const StudentResults = () => {
           student_name: profile?.full_name || "Unknown",
           class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
           class_id: profile?.class_id || null,
+          nisn: profile?.nisn || undefined,
+          exam_number: profile?.exam_number || undefined,
+          student_id: s.student_id,
         };
       });
 
@@ -231,6 +239,66 @@ const StudentResults = () => {
             }}
           >
             <Download className="h-4 w-4" /> Export Excel
+          </Button>
+          <Button
+            variant="outline" size="sm" className="gap-2"
+            disabled={filtered.filter(r => r.finished_at).length === 0}
+            onClick={() => {
+              const finishedResults = filtered.filter(r => r.finished_at);
+              // Fetch maxScore per exam for batch - use score as approx (will need questions data)
+              const fetchAndPrint = async () => {
+                // Get unique exam ids
+                const examIds = [...new Set(finishedResults.map(r => {
+                  // We need exam_id - fetch from sessions
+                  return r.id;
+                }))];
+                // Fetch questions weight per exam via sessions
+                const sessionIds = finishedResults.map(r => r.id);
+                const { data: sessions } = await supabase
+                  .from("exam_sessions")
+                  .select("id, exam_id")
+                  .in("id", sessionIds);
+                const examIdMap = new Map((sessions || []).map((s: any) => [s.id, s.exam_id]));
+                const uniqueExamIds = [...new Set([...(examIdMap.values())])];
+                
+                // Fetch total weight per exam
+                const weightMap = new Map<string, number>();
+                for (const examId of uniqueExamIds) {
+                  const { data: questions } = await supabase
+                    .from("questions")
+                    .select("point_weight")
+                    .eq("exam_id", examId);
+                  const total = (questions || []).reduce((sum: number, q: any) => sum + (q.point_weight || 1), 0);
+                  weightMap.set(examId, total);
+                }
+
+                const printData: ResultData[] = finishedResults.map(r => {
+                  const examId = examIdMap.get(r.id) || "";
+                  const maxScore = weightMap.get(examId) || r.total_questions || 0;
+                  const pct = maxScore > 0 ? Math.round(((r.score ?? r.correct_answers ?? 0) / maxScore) * 100) : null;
+                  return {
+                    student_name: r.student_name,
+                    class_name: r.class_name,
+                    exam_title: r.exam_title,
+                    exam_subject: r.exam_subject,
+                    score: r.score,
+                    correct_answers: r.correct_answers,
+                    total_questions: r.total_questions,
+                    started_at: r.started_at,
+                    finished_at: r.finished_at,
+                    maxScore,
+                    percentage: pct,
+                    nisn: r.nisn,
+                    exam_number: r.exam_number,
+                  };
+                });
+                setBatchPrintData(printData);
+                setBatchPrintOpen(true);
+              };
+              fetchAndPrint();
+            }}
+          >
+            <Printer className="h-4 w-4" /> Cetak Hasil ({filtered.filter(r => r.finished_at).length})
           </Button>
           <Button
             variant="destructive" size="sm" className="gap-2"
@@ -465,6 +533,12 @@ const StudentResults = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ResultPrinter
+        open={batchPrintOpen}
+        onOpenChange={setBatchPrintOpen}
+        results={batchPrintData}
+      />
     </AdminLayout>
   );
 };
