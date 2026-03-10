@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw } from "lucide-react";
+import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import ResultPrinter, { type ResultData } from "@/components/admin/ResultPrinter";
 
 interface SessionResult {
   id: string;
