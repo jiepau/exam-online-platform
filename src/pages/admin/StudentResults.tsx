@@ -113,6 +113,9 @@ const StudentResults = () => {
           student_name: profile?.full_name || "Unknown",
           class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
           class_id: profile?.class_id || null,
+          nisn: profile?.nisn || undefined,
+          exam_number: profile?.exam_number || undefined,
+          student_id: s.student_id,
         };
       });
 
