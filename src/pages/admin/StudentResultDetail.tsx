@@ -349,9 +349,14 @@ const StudentResultDetail = () => {
             <ArrowLeft className="h-4 w-4" /> Kembali
           </Button>
           {session && session.finished_at && (
-            <Button variant="outline" size="sm" className="gap-2 ml-auto" onClick={() => setPrintOpen(true)}>
-              <Printer className="h-4 w-4" /> Cetak Hasil
-            </Button>
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveEssay} disabled={essaySaving}>
+                <Save className="h-4 w-4" /> {essaySaving ? "Menyimpan..." : "Simpan Essay"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setPrintOpen(true)}>
+                <Printer className="h-4 w-4" /> Cetak Hasil
+              </Button>
+            </div>
           )}
         </div>
 
