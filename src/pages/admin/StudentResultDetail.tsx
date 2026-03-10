@@ -402,7 +402,7 @@ const StudentResultDetail = () => {
         <ResultPrinter
           open={printOpen}
           onOpenChange={setPrintOpen}
-          result={{
+          results={[{
             student_name: session.student_name,
             class_name: session.class_name,
             exam_title: session.exam_title,
@@ -414,10 +414,9 @@ const StudentResultDetail = () => {
             finished_at: session.finished_at,
             maxScore,
             percentage,
-            passed,
             nisn: studentExtra.nisn,
             exam_number: studentExtra.exam_number,
-          }}
+          }]}
         />
       )}
     </AdminLayout>
