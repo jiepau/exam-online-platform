@@ -448,9 +448,10 @@ const StudentResultDetail = () => {
             started_at: session.started_at,
             finished_at: session.finished_at,
             maxScore,
-            percentage,
+            percentage: pgPercentage,
             nisn: studentExtra.nisn,
             exam_number: studentExtra.exam_number,
+            essay_score: essayScore,
           }]}
         />
       )}
