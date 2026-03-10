@@ -54,7 +54,7 @@ const WhatsNewDialog = ({ externalOpen, onExternalClose }: WhatsNewDialogProps =
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 py-4">
+        <ScrollArea className="flex-1 px-6 py-4 overflow-y-auto" style={{ maxHeight: "calc(85vh - 160px)" }}>
           {/* Latest version - always expanded */}
           <VersionBlock entry={latestEntry} isLatest />
 
