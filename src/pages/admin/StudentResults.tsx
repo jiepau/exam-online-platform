@@ -94,7 +94,7 @@ const StudentResults = () => {
     if (sessions) {
       const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
       const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name, class_id").in("user_id", studentIds);
+        .from("profiles").select("user_id, full_name, class_id, nisn, exam_number").in("user_id", studentIds);
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
