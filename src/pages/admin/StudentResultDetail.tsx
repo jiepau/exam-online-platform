@@ -154,10 +154,22 @@ const StudentResultDetail = () => {
 
   const maxScore = answers.reduce((sum, q) => sum + (q.point_weight || 1), 0);
   const earnedScore = session?.score ?? null;
-  const percentage = session?.finished_at && maxScore > 0
+  const pgPercentage = session?.finished_at && maxScore > 0
     ? Math.round(((earnedScore || 0) / maxScore) * 100) : null;
-  const passed = (percentage ?? 0) >= 70;
+  const { finalScore, passed } = calcFinalScore(earnedScore || 0, maxScore, essayScore);
   const hasCustomWeights = answers.some((q) => q.point_weight > 1);
+
+  const handleSaveEssay = async () => {
+    if (!sessionId) return;
+    setEssaySaving(true);
+    const { error } = await supabase
+      .from("exam_sessions")
+      .update({ essay_score: essayScore } as any)
+      .eq("id", sessionId);
+    setEssaySaving(false);
+    if (error) { toast.error("Gagal menyimpan nilai essay"); return; }
+    toast.success("Nilai essay berhasil disimpan");
+  };
 
   const renderQuestionResult = (q: AnswerDetail, idx: number) => {
     const correct = isCorrectAnswer(q);
