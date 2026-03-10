@@ -106,6 +106,7 @@ export type Database = {
       exam_sessions: {
         Row: {
           correct_answers: number | null
+          essay_score: number | null
           exam_id: string
           finished_at: string | null
           id: string
@@ -116,6 +117,7 @@ export type Database = {
         }
         Insert: {
           correct_answers?: number | null
+          essay_score?: number | null
           exam_id: string
           finished_at?: string | null
           id?: string
@@ -126,6 +128,7 @@ export type Database = {
         }
         Update: {
           correct_answers?: number | null
+          essay_score?: number | null
           exam_id?: string
           finished_at?: string | null
           id?: string

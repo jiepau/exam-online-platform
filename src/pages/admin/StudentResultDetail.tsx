@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle, Printer } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, AlertCircle, Printer, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import MathText from "@/components/exam/MathText";
-import ResultPrinter from "@/components/admin/ResultPrinter";
+import ResultPrinter, { calcFinalScore } from "@/components/admin/ResultPrinter";
+import { toast } from "sonner";
 
 interface AnswerDetail {
   question_id: string;
@@ -42,6 +44,8 @@ const StudentResultDetail = () => {
   const [loading, setLoading] = useState(true);
   const [printOpen, setPrintOpen] = useState(false);
   const [studentExtra, setStudentExtra] = useState<{ nisn?: string; exam_number?: string }>({});
+  const [essayScore, setEssayScore] = useState<number | null>(null);
+  const [essaySaving, setEssaySaving] = useState(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -75,6 +79,7 @@ const StudentResultDetail = () => {
         started_at: sess.started_at,
         finished_at: sess.finished_at,
       });
+      setEssayScore((sess as any).essay_score ?? null);
 
       const { data: questions } = await supabase
         .from("questions")
@@ -149,10 +154,22 @@ const StudentResultDetail = () => {
 
   const maxScore = answers.reduce((sum, q) => sum + (q.point_weight || 1), 0);
   const earnedScore = session?.score ?? null;
-  const percentage = session?.finished_at && maxScore > 0
+  const pgPercentage = session?.finished_at && maxScore > 0
     ? Math.round(((earnedScore || 0) / maxScore) * 100) : null;
-  const passed = (percentage ?? 0) >= 70;
+  const { finalScore, passed } = calcFinalScore(earnedScore || 0, maxScore, essayScore);
   const hasCustomWeights = answers.some((q) => q.point_weight > 1);
+
+  const handleSaveEssay = async () => {
+    if (!sessionId) return;
+    setEssaySaving(true);
+    const { error } = await supabase
+      .from("exam_sessions")
+      .update({ essay_score: essayScore } as any)
+      .eq("id", sessionId);
+    setEssaySaving(false);
+    if (error) { toast.error("Gagal menyimpan nilai essay"); return; }
+    toast.success("Nilai essay berhasil disimpan");
+  };
 
   const renderQuestionResult = (q: AnswerDetail, idx: number) => {
     const correct = isCorrectAnswer(q);
@@ -332,9 +349,14 @@ const StudentResultDetail = () => {
             <ArrowLeft className="h-4 w-4" /> Kembali
           </Button>
           {session && session.finished_at && (
-            <Button variant="outline" size="sm" className="gap-2 ml-auto" onClick={() => setPrintOpen(true)}>
-              <Printer className="h-4 w-4" /> Cetak Hasil
-            </Button>
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveEssay} disabled={essaySaving}>
+                <Save className="h-4 w-4" /> {essaySaving ? "Menyimpan..." : "Simpan Essay"}
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setPrintOpen(true)}>
+                <Printer className="h-4 w-4" /> Cetak Hasil
+              </Button>
+            </div>
           )}
         </div>
 
@@ -356,25 +378,38 @@ const StudentResultDetail = () => {
                     {session.finished_at && ` – ${new Date(session.finished_at).toLocaleString("id-ID")}`}
                   </p>
                 </div>
-                <div className="flex gap-4 items-center shrink-0">
+                <div className="flex flex-wrap gap-4 items-center shrink-0">
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Benar</p>
+                    <p className="text-xs text-muted-foreground">PG Benar</p>
                     <p className="text-2xl font-bold text-foreground">
                       {session.correct_answers ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{session.total_questions ?? "-"}</span>
                     </p>
                   </div>
                   <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Skor</p>
-                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
+                    <p className="text-xs text-muted-foreground">Skor PG</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {earnedScore ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{maxScore}</span>
                     </p>
                   </div>
-                  {percentage !== null && (
-                    <div className="text-center">
-                      <p className="text-xs text-muted-foreground">Persentase</p>
-                      <p className={`text-2xl font-bold ${passed ? "text-success" : "text-destructive"}`}>{percentage}%</p>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">Essay</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Input
+                        type="number" min={0} max={25}
+                        value={essayScore ?? ""}
+                        onChange={(e) => setEssayScore(e.target.value === "" ? null : Math.min(25, Math.max(0, parseInt(e.target.value) || 0)))}
+                        className="w-14 h-8 text-center text-sm font-bold"
+                        placeholder="0"
+                      />
+                      <span className="text-sm text-muted-foreground">/25</span>
                     </div>
-                  )}
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">Nilai Akhir</p>
+                    <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
+                      {finalScore}
+                    </p>
+                  </div>
                   {session.finished_at && (
                     <span className={`rounded-full px-3 py-1 text-sm font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
                       {passed ? "Lulus" : "Tidak Lulus"}
@@ -413,9 +448,10 @@ const StudentResultDetail = () => {
             started_at: session.started_at,
             finished_at: session.finished_at,
             maxScore,
-            percentage,
+            percentage: pgPercentage,
             nisn: studentExtra.nisn,
             exam_number: studentExtra.exam_number,
+            essay_score: essayScore,
           }]}
         />
       )}
