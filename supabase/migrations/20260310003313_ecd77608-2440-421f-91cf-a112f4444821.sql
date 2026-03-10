@@ -1,0 +1,1 @@
+ALTER TABLE public.exam_sessions ADD COLUMN essay_score integer DEFAULT NULL;
