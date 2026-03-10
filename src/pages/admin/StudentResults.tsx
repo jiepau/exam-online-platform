@@ -50,7 +50,8 @@ const StudentResults = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
-
+  const [batchPrintOpen, setBatchPrintOpen] = useState(false);
+  const [batchPrintData, setBatchPrintData] = useState<ResultData[]>([]);
   const handleExportExcel = (data: SessionResult[], label: string) => {
     exportToExcel({
       filename: `hasil-ujian-${label}.xlsx`,
