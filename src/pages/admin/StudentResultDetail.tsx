@@ -327,9 +327,16 @@ const StudentResultDetail = () => {
   return (
     <AdminLayout>
       <div className="mb-4">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2 mb-3">
-          <ArrowLeft className="h-4 w-4" /> Kembali
-        </Button>
+        <div className="flex items-center gap-2 mb-3">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" /> Kembali
+          </Button>
+          {session && session.finished_at && (
+            <Button variant="outline" size="sm" className="gap-2 ml-auto" onClick={() => setPrintOpen(true)}>
+              <Printer className="h-4 w-4" /> Cetak Hasil
+            </Button>
+          )}
+        </div>
 
         {loading ? (
           <div className="text-center text-muted-foreground py-20">Memuat data...</div>
