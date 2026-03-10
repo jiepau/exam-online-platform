@@ -533,6 +533,12 @@ const StudentResults = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ResultPrinter
+        open={batchPrintOpen}
+        onOpenChange={setBatchPrintOpen}
+        results={batchPrintData}
+      />
     </AdminLayout>
   );
 };
