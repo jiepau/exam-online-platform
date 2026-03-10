@@ -292,6 +292,7 @@ const StudentResults = () => {
                     percentage: pct,
                     nisn: r.nisn,
                     exam_number: r.exam_number,
+                    essay_score: r.essay_score,
                   };
                 });
                 setBatchPrintData(printData);
