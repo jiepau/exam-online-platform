@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud } from "lucide-react";
+import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
