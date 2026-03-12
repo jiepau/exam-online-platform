@@ -8,7 +8,7 @@ import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import ViolationOverlay from "@/components/exam/ViolationOverlay";
-import { useExamAutoSave } from "@/hooks/useExamAutoSave";
+import { useExamAutoSave, cacheQuestions, loadCachedQuestions, savePendingSubmit, clearPendingSubmit, getPendingSubmit } from "@/hooks/useExamAutoSave";
 import {
   AlertDialog,
   AlertDialogAction,
