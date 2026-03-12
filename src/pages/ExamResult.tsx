@@ -35,6 +35,24 @@ const ExamResult = () => {
         <p className="text-muted-foreground mb-1">{studentName}</p>
         <p className="text-sm text-muted-foreground mb-6">{examTitle}</p>
 
+        {offline && !pendingSynced && (
+          <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 mb-4 flex items-center gap-3">
+            <WifiOff className="h-5 w-5 text-warning shrink-0" />
+            <p className="text-sm text-foreground leading-relaxed text-left">
+              Jawaban disimpan secara offline. Jawaban akan otomatis dikirim saat koneksi internet kembali.
+            </p>
+          </div>
+        )}
+
+        {pendingSynced && (
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 mb-4 flex items-center gap-3">
+            <Wifi className="h-5 w-5 text-primary shrink-0" />
+            <p className="text-sm text-foreground leading-relaxed text-left">
+              Jawaban berhasil dikirim ke server!
+            </p>
+          </div>
+        )}
+
         <div className="rounded-xl border border-border bg-muted/30 p-4 mb-6">
           <p className="text-sm text-foreground leading-relaxed">
             Jawaban Anda telah berhasil dikumpulkan. Hasil ujian akan diumumkan oleh guru/pengawas ujian.
