@@ -77,8 +77,9 @@ const ExamPage = () => {
         .select("id, exam_id, question_text, options, sort_order, image_url, question_type")
         .eq("exam_id", state.examId)
         .order("sort_order");
-      if (data) {
-        const qs = data.map((q: any) => ({
+      let qs: DBQuestion[] = [];
+      if (data && data.length > 0) {
+        qs = data.map((q: any) => ({
           id: q.id,
           question_text: q.question_text,
           options: q.options as string[],
@@ -86,8 +87,16 @@ const ExamPage = () => {
           image_url: q.image_url || undefined,
           question_type: q.question_type || "multiple_choice",
         }));
-        setQuestions(qs);
+        // Cache questions locally for offline use
+        cacheQuestions(state.examId, qs);
+      } else {
+        // Offline fallback: load from cache
+        const cached = loadCachedQuestions(state.examId);
+        if (cached) qs = cached;
+      }
 
+      if (qs.length > 0) {
+        setQuestions(qs);
         // Load saved draft after questions are ready
         const draft = await loadDraft();
         if (draft && Object.keys(draft.answers).length > 0) {
