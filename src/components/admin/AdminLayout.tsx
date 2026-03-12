@@ -12,6 +12,7 @@ import logoMadrasah from "@/assets/logo-madrasah.png";
 const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/monitor", label: "Monitor", icon: Eye },
+  { path: "/admin/sync", label: "Status Sync", icon: Cloud },
   { path: "/admin/exams", label: "Kelola Ujian", icon: FileText },
   { path: "/admin/results", label: "Hasil Siswa", icon: Users },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },
