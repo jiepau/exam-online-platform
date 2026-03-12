@@ -50,41 +50,6 @@ const ExamResult = () => {
     return null;
   }
 
-  // Auto-retry pending submissions when online
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    if (!offline) return;
-
-    const trySync = async () => {
-      // Find any pending submit in localStorage
-      const keys = Object.keys(localStorage).filter(k => k.startsWith("exam_pending_submit_"));
-      for (const key of keys) {
-        const examId = key.replace("exam_pending_submit_", "");
-        const pending = getPendingSubmit(examId);
-        if (!pending || !navigator.onLine) continue;
-
-        try {
-          const { error } = await supabase.functions.invoke("submit-exam", {
-            body: pending,
-          });
-          if (!error) {
-            clearPendingSubmit(examId);
-            setPendingSynced(true);
-          }
-        } catch {
-          // Will retry next time
-        }
-      }
-    };
-
-    // Try immediately
-    if (navigator.onLine) trySync();
-
-    // Retry when coming online
-    window.addEventListener("online", trySync);
-    return () => window.removeEventListener("online", trySync);
-  }, [offline]);
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex items-center justify-center px-4">
