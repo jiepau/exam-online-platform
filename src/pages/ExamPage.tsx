@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud } from "lucide-react";
+import { GraduationCap, ChevronLeft, ChevronRight, Send, Shield, Maximize, AlertTriangle, LayoutGrid, CloudOff, Cloud, Wifi, WifiOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import ExamTimer from "@/components/exam/ExamTimer";
@@ -8,7 +8,7 @@ import QuestionCard from "@/components/exam/QuestionCard";
 import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import ViolationOverlay from "@/components/exam/ViolationOverlay";
-import { useExamAutoSave } from "@/hooks/useExamAutoSave";
+import { useExamAutoSave, cacheQuestions, loadCachedQuestions, savePendingSubmit, clearPendingSubmit, getPendingSubmit } from "@/hooks/useExamAutoSave";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,8 +57,8 @@ const ExamPage = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  // Auto-save hook
-  const { updateState, saveNow, loadDraft, clearDraft } = useExamAutoSave(state?.examId, examStarted);
+  // Auto-save hook (offline-first)
+  const { updateState, saveNow, loadDraft, clearDraft, syncStatus } = useExamAutoSave(state?.examId, examStarted);
 
   const studentName = state?.studentName || "Siswa";
   const examTitle = state?.examTitle || "";
@@ -77,8 +77,9 @@ const ExamPage = () => {
         .select("id, exam_id, question_text, options, sort_order, image_url, question_type")
         .eq("exam_id", state.examId)
         .order("sort_order");
-      if (data) {
-        const qs = data.map((q: any) => ({
+      let qs: DBQuestion[] = [];
+      if (data && data.length > 0) {
+        qs = data.map((q: any) => ({
           id: q.id,
           question_text: q.question_text,
           options: q.options as string[],
@@ -86,8 +87,16 @@ const ExamPage = () => {
           image_url: q.image_url || undefined,
           question_type: q.question_type || "multiple_choice",
         }));
-        setQuestions(qs);
+        // Cache questions locally for offline use
+        cacheQuestions(state.examId, qs);
+      } else {
+        // Offline fallback: load from cache
+        const cached = loadCachedQuestions(state.examId);
+        if (cached) qs = cached;
+      }
 
+      if (qs.length > 0) {
+        setQuestions(qs);
         // Load saved draft after questions are ready
         const draft = await loadDraft();
         if (draft && Object.keys(draft.answers).length > 0) {
@@ -108,38 +117,48 @@ const ExamPage = () => {
   }, [answers, flagged, currentIndex, updateState]);
 
   const handleSubmitFn = useCallback(async () => {
-    // Save one last time before submitting
     await saveNow();
 
-    const total = questions.length;
+    const submitPayload = {
+      exam_id: state?.examId,
+      answers,
+      flagged_indices: Array.from(flagged),
+    };
 
     try {
-      // Server-side scoring via edge function
+      if (!navigator.onLine) {
+        // Save submission for later sync
+        savePendingSubmit(state?.examId || "", submitPayload);
+        await clearDraft();
+        navigate("/result", {
+          state: { studentName, examTitle, offline: true },
+        });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("submit-exam", {
-        body: {
-          exam_id: state?.examId,
-          answers,
-          flagged_indices: Array.from(flagged),
-        },
+        body: submitPayload,
       });
 
       if (error) {
         console.error("Failed to submit exam:", error);
+        // Save for retry
+        savePendingSubmit(state?.examId || "", submitPayload);
+      } else {
+        clearPendingSubmit(state?.examId || "");
       }
 
-      // Clear draft after successful submission
       await clearDraft();
 
       navigate("/result", {
-        state: {
-          studentName,
-          examTitle,
-        },
+        state: { studentName, examTitle },
       });
     } catch (e) {
       console.error("Failed to submit exam:", e);
+      savePendingSubmit(state?.examId || "", submitPayload);
+      await clearDraft();
       navigate("/result", {
-        state: { studentName, examTitle },
+        state: { studentName, examTitle, offline: true },
       });
     }
   }, [answers, questions, navigate, studentName, examTitle, state, flagged, saveNow, clearDraft]);
@@ -367,7 +386,22 @@ const ExamPage = () => {
               <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{studentName} • {examSubject}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Sync status indicator */}
+            <div className="flex items-center gap-1 rounded-lg px-1.5 sm:px-2 py-1 text-[10px] sm:text-xs font-medium" title={
+              syncStatus === "synced" ? "Tersinkron" : syncStatus === "saving" ? "Menyimpan..." : syncStatus === "offline" ? "Mode Offline" : "Gagal sinkron"
+            }>
+              {syncStatus === "synced" && <Cloud className="h-3 w-3 text-emerald-500" />}
+              {syncStatus === "saving" && <Loader2 className="h-3 w-3 text-primary animate-spin" />}
+              {syncStatus === "offline" && <WifiOff className="h-3 w-3 text-warning" />}
+              {syncStatus === "error" && <CloudOff className="h-3 w-3 text-destructive" />}
+              <span className="hidden sm:inline text-muted-foreground">
+                {syncStatus === "synced" && "Tersinkron"}
+                {syncStatus === "saving" && "Menyimpan..."}
+                {syncStatus === "offline" && "Offline"}
+                {syncStatus === "error" && "Gagal sync"}
+              </span>
+            </div>
             {violations > 0 && (
               <div className="flex items-center gap-1 sm:gap-1.5 rounded-lg bg-destructive/10 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs font-semibold text-destructive">
                 <AlertTriangle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
