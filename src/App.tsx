@@ -21,6 +21,7 @@ import StudentResultDetail from "./pages/admin/StudentResultDetail";
 import Settings from "./pages/admin/Settings";
 import ViolationHistory from "./pages/admin/ViolationHistory";
 import LiveMonitor from "./pages/admin/LiveMonitor";
+import SyncStatus from "./pages/admin/SyncStatus";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
