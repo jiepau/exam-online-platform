@@ -13,15 +13,42 @@ const ExamResult = () => {
     studentName: string;
     examTitle: string;
     offline?: boolean;
-  };
+  } | null;
   const [pendingSynced, setPendingSynced] = useState(false);
+
+  const studentName = state?.studentName || "";
+  const examTitle = state?.examTitle || "";
+  const offline = state?.offline || false;
+
+  // Auto-retry pending submissions when online
+  useEffect(() => {
+    if (!offline) return;
+
+    const trySync = async () => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("exam_pending_submit_"));
+      for (const key of keys) {
+        const examId = key.replace("exam_pending_submit_", "");
+        const pending = getPendingSubmit(examId);
+        if (!pending || !navigator.onLine) continue;
+        try {
+          const { error } = await supabase.functions.invoke("submit-exam", { body: pending });
+          if (!error) {
+            clearPendingSubmit(examId);
+            setPendingSynced(true);
+          }
+        } catch { /* retry next time */ }
+      }
+    };
+
+    if (navigator.onLine) trySync();
+    window.addEventListener("online", trySync);
+    return () => window.removeEventListener("online", trySync);
+  }, [offline]);
 
   if (!state) {
     navigate("/");
     return null;
   }
-
-  const { studentName, examTitle, offline } = state;
 
   // Auto-retry pending submissions when online
   // eslint-disable-next-line react-hooks/rules-of-hooks
