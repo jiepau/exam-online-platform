@@ -1,7 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { GraduationCap, CheckCircle, Home } from "lucide-react";
+import { GraduationCap, CheckCircle, Home, WifiOff, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import AppFooter from "@/components/AppFooter";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { getPendingSubmit, clearPendingSubmit } from "@/hooks/useExamAutoSave";
 
 const ExamResult = () => {
   const location = useLocation();
@@ -9,14 +12,16 @@ const ExamResult = () => {
   const state = location.state as {
     studentName: string;
     examTitle: string;
+    offline?: boolean;
   };
+  const [pendingSynced, setPendingSynced] = useState(false);
 
   if (!state) {
     navigate("/");
     return null;
   }
 
-  const { studentName, examTitle } = state;
+  const { studentName, examTitle, offline } = state;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
