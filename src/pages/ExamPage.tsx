@@ -57,8 +57,8 @@ const ExamPage = () => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [draftLoaded, setDraftLoaded] = useState(false);
 
-  // Auto-save hook
-  const { updateState, saveNow, loadDraft, clearDraft } = useExamAutoSave(state?.examId, examStarted);
+  // Auto-save hook (offline-first)
+  const { updateState, saveNow, loadDraft, clearDraft, syncStatus } = useExamAutoSave(state?.examId, examStarted);
 
   const studentName = state?.studentName || "Siswa";
   const examTitle = state?.examTitle || "";
