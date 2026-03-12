@@ -117,38 +117,48 @@ const ExamPage = () => {
   }, [answers, flagged, currentIndex, updateState]);
 
   const handleSubmitFn = useCallback(async () => {
-    // Save one last time before submitting
     await saveNow();
 
-    const total = questions.length;
+    const submitPayload = {
+      exam_id: state?.examId,
+      answers,
+      flagged_indices: Array.from(flagged),
+    };
 
     try {
-      // Server-side scoring via edge function
+      if (!navigator.onLine) {
+        // Save submission for later sync
+        savePendingSubmit(state?.examId || "", submitPayload);
+        await clearDraft();
+        navigate("/result", {
+          state: { studentName, examTitle, offline: true },
+        });
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("submit-exam", {
-        body: {
-          exam_id: state?.examId,
-          answers,
-          flagged_indices: Array.from(flagged),
-        },
+        body: submitPayload,
       });
 
       if (error) {
         console.error("Failed to submit exam:", error);
+        // Save for retry
+        savePendingSubmit(state?.examId || "", submitPayload);
+      } else {
+        clearPendingSubmit(state?.examId || "");
       }
 
-      // Clear draft after successful submission
       await clearDraft();
 
       navigate("/result", {
-        state: {
-          studentName,
-          examTitle,
-        },
+        state: { studentName, examTitle },
       });
     } catch (e) {
       console.error("Failed to submit exam:", e);
+      savePendingSubmit(state?.examId || "", submitPayload);
+      await clearDraft();
       navigate("/result", {
-        state: { studentName, examTitle },
+        state: { studentName, examTitle, offline: true },
       });
     }
   }, [answers, questions, navigate, studentName, examTitle, state, flagged, saveNow, clearDraft]);
