@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import logoMadrasah from "@/assets/logo-madrasah.png";
 const navItems = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { path: "/admin/monitor", label: "Monitor", icon: Eye },
+  { path: "/admin/sync", label: "Status Sync", icon: Cloud },
   { path: "/admin/exams", label: "Kelola Ujian", icon: FileText },
   { path: "/admin/results", label: "Hasil Siswa", icon: Users },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },

@@ -21,6 +21,7 @@ import StudentResultDetail from "./pages/admin/StudentResultDetail";
 import Settings from "./pages/admin/Settings";
 import ViolationHistory from "./pages/admin/ViolationHistory";
 import LiveMonitor from "./pages/admin/LiveMonitor";
+import SyncStatus from "./pages/admin/SyncStatus";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
@@ -65,6 +66,7 @@ const App = () => {
               <Route path="/admin/profile" element={<AdminRoute><ProfileEdit /></AdminRoute>} />
               <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/admin/violations" element={<AdminRoute><ViolationHistory /></AdminRoute>} />
+              <Route path="/admin/sync" element={<AdminRoute><SyncStatus /></AdminRoute>} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfUse />} />
               <Route path="*" element={<NotFound />} />
