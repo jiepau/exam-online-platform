@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Settings as SettingsIcon, Upload, Save, Palette } from "lucide-react";
+import { Settings as SettingsIcon, Upload, Save, Palette, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { useAppSettings } from "@/hooks/useAppSettings";
+import { useAppSettings, AntiCheatConfig, DEFAULT_ANTI_CHEAT } from "@/hooks/useAppSettings";
 import logoDefault from "@/assets/logo-madrasah.png";
 
 const THEMES = [
@@ -36,6 +37,7 @@ const Settings = () => {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [antiCheat, setAntiCheat] = useState<AntiCheatConfig>(DEFAULT_ANTI_CHEAT);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -44,6 +46,7 @@ const Settings = () => {
       setAppName(settings.app_name);
       setTheme(settings.theme);
       setLogoUrl(settings.school_logo_url);
+      setAntiCheat({ ...DEFAULT_ANTI_CHEAT, ...settings.anti_cheat_config });
     }
   }, [settings]);
 
@@ -87,6 +90,7 @@ const Settings = () => {
         app_name: appName,
         school_logo_url: logoUrl,
         theme,
+        anti_cheat_config: antiCheat as any,
         updated_at: new Date().toISOString(),
       })
       .eq("id", settings.id);
