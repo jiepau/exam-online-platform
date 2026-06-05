@@ -9,6 +9,7 @@ import QuestionNav from "@/components/exam/QuestionNav";
 import { useAntiCheat } from "@/hooks/useAntiCheat";
 import ViolationOverlay from "@/components/exam/ViolationOverlay";
 import { useExamAutoSave, cacheQuestions, loadCachedQuestions, savePendingSubmit, clearPendingSubmit, getPendingSubmit } from "@/hooks/useExamAutoSave";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -163,13 +164,14 @@ const ExamPage = () => {
     }
   }, [answers, questions, navigate, studentName, examTitle, state, flagged, saveNow, clearDraft]);
 
-  // Anti-cheat
+  // Anti-cheat (config dari pengaturan admin)
+  const { settings: appSettings } = useAppSettings();
   const { violations, isFullscreen, enterFullscreen, maxViolations, lastViolationType } = useAntiCheat(
     examStarted,
     {
-      maxViolations: 5,
+      config: appSettings.anti_cheat_config,
+      maxViolations: appSettings.anti_cheat_config?.max_violations ?? 5,
       onViolation: async (type, count) => {
-        // Log violation to database
         try {
           const { data: { user } } = await supabase.auth.getUser();
           if (user && state?.examId) {
