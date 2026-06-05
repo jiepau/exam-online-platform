@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       app_settings: {
         Row: {
+          anti_cheat_config: Json
           app_name: string
           id: string
           school_logo_url: string | null
@@ -25,6 +26,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          anti_cheat_config?: Json
           app_name?: string
           id?: string
           school_logo_url?: string | null
@@ -34,6 +36,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          anti_cheat_config?: Json
           app_name?: string
           id?: string
           school_logo_url?: string | null
