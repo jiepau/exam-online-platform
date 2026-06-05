@@ -195,6 +195,55 @@ const Settings = () => {
           </p>
         </div>
 
+        {/* Anti-Cheat */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-destructive" /> Pengaturan Anti-Cheat
+          </h3>
+          <p className="text-xs text-muted-foreground mb-4">
+            Aktifkan atau nonaktifkan jenis deteksi pelanggaran selama ujian berlangsung.
+          </p>
+          <div className="space-y-3">
+            {([
+              { key: "require_fullscreen", label: "Wajib Mode Fullscreen", desc: "Ujian dipaksa berjalan dalam layar penuh" },
+              { key: "detect_tab_switch", label: "Deteksi Pindah Tab/Jendela", desc: "Catat pelanggaran jika siswa keluar tab >15 detik" },
+              { key: "block_copy_paste", label: "Blokir Copy / Paste / Cut", desc: "Mencegah menyalin & menempel teks" },
+              { key: "block_right_click", label: "Blokir Klik Kanan", desc: "Menonaktifkan menu konteks" },
+              { key: "block_shortcuts", label: "Blokir Shortcut Keyboard", desc: "Mencegah F12, Ctrl+C/V/P, DevTools, dll" },
+              { key: "block_printscreen", label: "Deteksi Screenshot (PrintScreen)", desc: "Catat pelanggaran saat tombol PrintScreen ditekan" },
+            ] as { key: keyof AntiCheatConfig; label: string; desc: string }[]).map((item) => (
+              <div key={item.key} className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground">{item.label}</p>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </div>
+                <Switch
+                  checked={Boolean(antiCheat[item.key])}
+                  onCheckedChange={(v) => setAntiCheat((prev) => ({ ...prev, [item.key]: v }))}
+                />
+              </div>
+            ))}
+
+            <div className="rounded-lg border border-border p-3">
+              <Label className="text-sm font-medium">Maksimal Pelanggaran</Label>
+              <p className="text-xs text-muted-foreground mb-2">
+                Ujian otomatis dikumpulkan jika jumlah pelanggaran mencapai batas ini.
+              </p>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={antiCheat.max_violations}
+                onChange={(e) =>
+                  setAntiCheat((prev) => ({ ...prev, max_violations: Math.max(1, parseInt(e.target.value) || 1) }))
+                }
+                className="w-24"
+              />
+            </div>
+          </div>
+        </div>
+
+
         {/* Save */}
         <Button
           onClick={handleSave}
