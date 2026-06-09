@@ -17,6 +17,7 @@ const navItems = [
   { path: "/admin/results", label: "Hasil Siswa", icon: Users },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },
   { path: "/admin/violations", label: "Pelanggaran", icon: ShieldAlert },
+  { path: "/admin/anti-cheat-test", label: "Uji Anti-Cheat", icon: FlaskConical },
   { path: "/admin/profile", label: "Profil Guru", icon: UserCog },
   { path: "/admin/settings", label: "Pengaturan", icon: Settings },
 ];
