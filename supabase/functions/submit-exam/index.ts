@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
@@ -30,6 +30,7 @@ Deno.serve(async (req) => {
     const {
       data: { user },
     } = await userClient.auth.getUser();
+
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -48,86 +49,82 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Ambil data ujian termasuk jadwalnya (Pengecekan Waktu)
+    // 1. Ambil data ujian & jadwal
     const { data: examData, error: examError } = await adminClient
       .from("exams")
-      .select("id, start_time, end_time, scheduled_date")
+      .select("id, start_time, end_time, scheduled_date, total_questions")
       .eq("id", exam_id)
       .single();
 
     if (examError || !examData) {
+      console.error("Gagal ambil data ujian:", examError);
       return new Response(JSON.stringify({ error: "Ujian tidak ditemukan" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Logika Pengecekan Waktu
+    // 2. Logika Pengecekan Waktu (Diperbaiki)
     const now = new Date();
+
+    // Gabungkan tanggal dan waktu menjadi satu objek Date yang valid
     let startTime: Date | null = null;
     let endTime: Date | null = null;
 
     if (examData.scheduled_date && examData.start_time) {
-      // Gabungkan tanggal dan waktu mulai
-      const datePart = examData.scheduled_date.split("T")[0];
-      startTime = new Date(`${datePart}T${examData.start_time}`);
+      // Format: YYYY-MM-DDTHH:mm:ss
+      const startStr = `${examData.scheduled_date}T${examData.start_time}`;
+      startTime = new Date(startStr);
     }
 
     if (examData.scheduled_date && examData.end_time) {
-      // Gabungkan tanggal dan waktu selesai
-      const datePart = examData.scheduled_date.split("T")[0];
-      endTime = new Date(`${datePart}T${examData.end_time}`);
+      const endStr = `${examData.scheduled_date}T${examData.end_time}`;
+      endTime = new Date(endStr);
     }
 
-    // Cek apakah waktu sekarang berada di luar jadwal
+    // Validasi Waktu
     if (startTime && now < startTime) {
-      return new Response(
-        JSON.stringify({ error: "Ujian belum dimulai. Silakan tunggu hingga waktu yang ditentukan." }),
-        {
-          status: 403,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    if (endTime && now > endTime) {
-      return new Response(JSON.stringify({ error: "Ujian telah berakhir. Anda tidak dapat mengirim jawaban lagi." }), {
+      return new Response(JSON.stringify({ error: "Ujian belum dimulai." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch questions with correct answers, type, and weight
+    if (endTime && now > endTime) {
+      return new Response(JSON.stringify({ error: "Ujian telah berakhir." }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 3. Ambil Soal untuk Koreksi
     const { data: questions, error: qError } = await adminClient
       .from("questions")
-      .select("id, correct_answer, correct_answer_data, question_type, sort_order, point_weight")
-      .eq("exam_id", exam_id)
-      .order("sort_order");
+      .select("id, correct_answer, correct_answer_data, question_type, point_weight")
+      .eq("exam_id", exam_id);
 
     if (qError || !questions) {
-      return new Response(JSON.stringify({ error: "Failed to fetch questions" }), {
+      return new Response(JSON.stringify({ error: "Gagal mengambil soal" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Calculate score server-side with type-aware weighted grading
-    const total = questions.length;
-    let correctCount = 0;
+    // 4. Hitung Nilai
     let totalScore = 0;
-    let maxScore = 0;
+    let correctCount = 0;
+    const totalQuestions = questions.length;
 
-    questions.forEach((q, i) => {
-      const studentAnswer = answers[String(i)];
+    questions.forEach((q, index) => {
+      // PERBAIKAN: Ambil jawaban siswa dengan benar tanpa duplikasi variabel
+      const studentAnswer = answers[String(index)];
       const type = q.question_type || "multiple_choice";
       const weight = q.point_weight || 1;
-      maxScore += weight;
       let isCorrect = false;
 
       if (type === "multiple_choice" || type === "true_false") {
         if (studentAnswer === q.correct_answer) isCorrect = true;
       } else if (type === "multiple_select") {
-        // Partial scoring: proportion of correct selections
         const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
         const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
         if (studentIndices.length > 0 && correctIndices.length > 0) {
@@ -140,7 +137,7 @@ Deno.serve(async (req) => {
             correctCount++;
           }
         }
-        return; // Skip final isCorrect block
+        return; // Lanjut ke soal berikutnya
       } else if (type === "short_answer") {
         const data = q.correct_answer_data || {};
         const correctAns = (data.answer || "").trim().toLowerCase();
@@ -151,19 +148,17 @@ Deno.serve(async (req) => {
           isCorrect = true;
         }
       } else if (type === "matching") {
-        // Partial scoring: proportion of correct pairs
         const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
         if (studentOrder.length > 0) {
-          const totalPairs = studentOrder.length;
           const correctPairs = studentOrder.filter((v: number, i: number) => v === i).length;
-          const partialRatio = correctPairs / totalPairs;
+          const partialRatio = correctPairs / studentOrder.length;
           totalScore += weight * partialRatio;
           if (partialRatio === 1) {
             isCorrect = true;
             correctCount++;
           }
         }
-        return; // Skip final isCorrect block
+        return;
       }
 
       if (isCorrect) {
@@ -172,9 +167,10 @@ Deno.serve(async (req) => {
       }
     });
 
-    const score = Math.round(totalScore);
+    const finalScore = Math.round(totalScore);
 
-    // Save exam session (Update if exists, Insert if new)
+    // 5. Simpan/Update Session (Menangani Submit Ulang)
+    // Cek apakah sudah ada sesi untuk siswa ini di ujian ini
     const { data: existingSession } = await adminClient
       .from("exam_sessions")
       .select("id")
@@ -182,31 +178,38 @@ Deno.serve(async (req) => {
       .eq("exam_id", exam_id)
       .single();
 
-    let session;
+    let sessionId: string;
+
     if (existingSession) {
+      // UPDATE sesi yang sudah ada
       const { data: updatedSession, error: updateError } = await adminClient
         .from("exam_sessions")
         .update({
-          score,
+          score: finalScore,
           correct_answers: correctCount,
-          total_questions: total,
+          total_questions: totalQuestions,
           finished_at: new Date().toISOString(),
+          // Kita tidak update started_at agar tetap waktu awal pertama kali
         })
         .eq("id", existingSession.id)
         .select()
         .single();
 
       if (updateError) throw updateError;
-      session = updatedSession;
+      sessionId = updatedSession.id;
+
+      // Hapus jawaban lama agar tidak duplikat
+      await adminClient.from("student_answers").delete().eq("session_id", sessionId);
     } else {
+      // INSERT sesi baru
       const { data: newSession, error: insertError } = await adminClient
         .from("exam_sessions")
         .insert({
           student_id: user.id,
           exam_id,
-          score,
+          score: finalScore,
           correct_answers: correctCount,
-          total_questions: total,
+          total_questions: totalQuestions,
           started_at: new Date().toISOString(),
           finished_at: new Date().toISOString(),
         })
@@ -214,21 +217,16 @@ Deno.serve(async (req) => {
         .single();
 
       if (insertError) throw insertError;
-      session = newSession;
+      sessionId = newSession.id;
     }
 
-    // Save individual answers (Hanya simpan jika session baru, atau hapus dulu yang lama jika ingin update)
-    // Untuk simplifikasi, kita hapus jawaban lama jika update, lalu insert baru
-    if (existingSession) {
-      await adminClient.from("student_answers").delete().eq("session_id", existingSession.id);
-    }
-
+    // 6. Simpan Jawaban Detail
     const flaggedSet = new Set(flagged_indices || []);
     const answerRows = questions.map((q, i) => {
       const ans = answers[String(i)];
       const type = q.question_type || "multiple_choice";
       return {
-        session_id: session.id,
+        session_id: sessionId,
         question_id: q.id,
         selected_answer: typeof ans === "number" ? ans : null,
         selected_answer_data: type === "multiple_select" || type === "short_answer" || type === "matching" ? ans : null,
@@ -238,12 +236,20 @@ Deno.serve(async (req) => {
 
     await adminClient.from("student_answers").insert(answerRows);
 
-    return new Response(JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        score: finalScore,
+        correct: correctCount,
+        total: totalQuestions,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (err) {
-    console.error("Submit exam error:", err);
+    console.error("Error submitting exam:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
