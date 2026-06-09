@@ -212,7 +212,6 @@ const ExamManager = () => {
       let starCount = 0;
       const starredIndices: number[] = [];
 
-      // Check for short answer pattern: "Jawaban: ..." or "Jawab: ..."
       const answerLine = lines.find((l) => /^(jawab(an)?)\s*[:=]\s*.+/i.test(l.trim()));
       if (answerLine && lines.length <= 3) {
         const answer = answerLine.replace(/^(jawab(an)?)\s*[:=]\s*/i, "").trim();
@@ -243,7 +242,6 @@ const ExamManager = () => {
 
       if (options.length < 2) continue;
 
-      // Detect True/False: exactly 2 options that are Benar/Salah variants
       const isTrueFalse = options.length === 2 &&
         /^(benar|betul|true|b)$/i.test(options[0]) &&
         /^(salah|false|s)$/i.test(options[1]);
@@ -259,7 +257,6 @@ const ExamManager = () => {
         continue;
       }
 
-      // Detect PG Kompleks: more than 1 starred answer
       if (starCount > 1) {
         while (options.length < 4) options.push("");
         questions.push({
@@ -273,7 +270,6 @@ const ExamManager = () => {
         continue;
       }
 
-      // Default: Multiple Choice
       correctAnswer = starredIndices.length > 0 ? starredIndices[0] : 0;
       while (options.length < 4) options.push("");
       questions.push({
@@ -285,6 +281,122 @@ const ExamManager = () => {
       });
     }
     return questions;
+  };
+
+  const parseDocxHtml = (html: string): QuestionForm[] => {
+    const blocks: string[] = [];
+    const blockRegex = /<(li|p)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+    const decode = (s: string) => s
+      .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    let m: RegExpExecArray | null;
+    while ((m = blockRegex.exec(html)) !== null) {
+      const inner = decode(
+        m[2].replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
+      );
+      const cleaned = inner.split("\n").map((l) => l.replace(/[\t ]+/g, " ").trim()).filter(Boolean);
+      if (cleaned.length) blocks.push(cleaned.join("\n"));
+    }
+
+    type Opt = { letter: string | null; text: string; star: boolean };
+    type Q = { text: string; opts: Opt[]; shortAnswer?: string };
+    const qs: Q[] = [];
+    const optStart = /^([A-Fa-f])[.)]\s*(.*)$/;
+    const mkOpt = (letter: string | null, raw: string): Opt => {
+      const star = /\*/.test(raw);
+      return { letter, text: raw.replace(/\*/g, "").trim(), star };
+    };
+
+    for (const block of blocks) {
+      const lines = block.split("\n");
+      const firstOpt = lines[0].match(optStart);
+      const prev = qs[qs.length - 1];
+
+      // Continuation block starting with "C." / "D." that belongs to previous question
+      if (firstOpt && prev && prev.opts.length > 0 && prev.opts.length < 6) {
+        for (const line of lines) {
+          const mm = line.match(optStart);
+          if (mm) prev.opts.push(mkOpt(mm[1].toUpperCase(), mm[2]));
+        }
+        continue;
+      }
+
+      // Auto-lettered continuation option (Word restarted numbering for each option)
+      if (!firstOpt && lines.length === 1 && prev && prev.opts.length < 4) {
+        const looksLikeQ = /(\.{2,}|:|\?)\s*$/.test(prev.text) ||
+          /(adalah|yaitu|berikut|antara lain)\s*\.*\s*$/i.test(prev.text);
+        const hasUnlettered = prev.opts.some((o) => o.letter === null);
+        if (looksLikeQ || hasUnlettered) {
+          prev.opts.push(mkOpt(null, lines[0]));
+          continue;
+        }
+      }
+
+      // New question; inline options split by <br/> -> newlines
+      const q: Q = { text: "", opts: [] };
+      const qTextLines: string[] = [];
+      for (const line of lines) {
+        const mm = line.match(optStart);
+        if (mm && qTextLines.length > 0) {
+          q.opts.push(mkOpt(mm[1].toUpperCase(), mm[2]));
+        } else if (/^(jawab(an)?)\s*[:=]\s*.+/i.test(line)) {
+          q.shortAnswer = line.replace(/^(jawab(an)?)\s*[:=]\s*/i, "").trim();
+        } else {
+          qTextLines.push(line);
+        }
+      }
+      q.text = qTextLines.join(" ").replace(/^\d+[.)]\s*/, "").trim();
+      if (q.text) qs.push(q);
+    }
+
+    return qs
+      .filter((q) => q.text && (q.opts.length >= 2 || q.shortAnswer))
+      .map<QuestionForm>((q) => {
+        if (q.shortAnswer && q.opts.length === 0) {
+          return {
+            question_text: q.text,
+            options: [],
+            correct_answer: 0,
+            question_type: "short_answer",
+            correct_answer_data: { answer: q.shortAnswer, aliases: [] },
+            point_weight: 1,
+          };
+        }
+        const starIdx = q.opts.map((o, i) => (o.star ? i : -1)).filter((i) => i >= 0);
+        const optTexts = q.opts.map((o) => o.text);
+        while (optTexts.length < 4) optTexts.push("");
+
+        const isTF = q.opts.length === 2 &&
+          /^(benar|betul|true|b)$/i.test(q.opts[0].text) &&
+          /^(salah|false|s)$/i.test(q.opts[1].text);
+        if (isTF) {
+          return {
+            question_text: q.text,
+            options: ["Benar", "Salah"],
+            correct_answer: starIdx[0] ?? 0,
+            question_type: "true_false",
+            point_weight: 1,
+          };
+        }
+        if (starIdx.length > 1) {
+          return {
+            question_text: q.text,
+            options: optTexts,
+            correct_answer: 0,
+            question_type: "multiple_select",
+            correct_answer_data: starIdx,
+            point_weight: 1,
+          };
+        }
+        return {
+          question_text: q.text,
+          options: optTexts,
+          correct_answer: starIdx[0] ?? 0,
+          question_type: "multiple_choice",
+          point_weight: 1,
+        };
+      });
   };
 
   const handleImportQuestions = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -308,8 +420,12 @@ const ExamManager = () => {
         toast.success(`${imported.length} soal berhasil diimport`);
       } else if (ext === "docx") {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const imported = parseWordText(result.value);
+        const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+        let imported = parseDocxHtml(htmlResult.value);
+        if (imported.length === 0) {
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          imported = parseWordText(result.value);
+        }
         if (imported.length === 0) { toast.error("Tidak ada soal yang terdeteksi."); return; }
         setQuestions((prev) => [...prev, ...imported]);
         toast.success(`${imported.length} soal berhasil diimport dari Word`);
