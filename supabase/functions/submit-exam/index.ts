@@ -27,7 +27,9 @@ Deno.serve(async (req) => {
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
-    const { data: { user } } = await userClient.auth.getUser();
+    const {
+      data: { user },
+    } = await userClient.auth.getUser();
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -59,7 +61,44 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // ... kode sebelumnya (setelah mendapatkan examId dan studentId) ...
 
+    // 1. Ambil data ujian termasuk jadwalnya
+    const { data: examData, error: examError } = await supabase
+      .from("exams")
+      .select("id, start_time, end_time, scheduled_date") // Pastikan kolom ini dipilih
+      .eq("id", exam_id)
+      .single();
+
+    if (examError || !examData) {
+      return new Response(JSON.stringify({ error: "Ujian tidak ditemukan" }), { status: 404 });
+    }
+
+    // 2. Logika Pengecekan Waktu
+    const now = new Date();
+    const scheduledDate = examData.scheduled_date ? new Date(examData.scheduled_date) : null;
+    const startTime = examData.start_time
+      ? new Date(`${scheduledDate?.toISOString().split("T")[0]}T${examData.start_time}`)
+      : null;
+    const endTime = examData.end_time
+      ? new Date(`${scheduledDate?.toISOString().split("T")[0]}T${examData.end_time}`)
+      : null;
+
+    // Cek apakah waktu sekarang berada di luar jadwal
+    if (startTime && now < startTime) {
+      return new Response(
+        JSON.stringify({ error: "Ujian belum dimulai. Silakan tunggu hingga waktu yang ditentukan." }),
+        { status: 403 },
+      );
+    }
+
+    if (endTime && now > endTime) {
+      return new Response(JSON.stringify({ error: "Ujian telah berakhir. Anda tidak dapat mengirim jawaban lagi." }), {
+        status: 403,
+      });
+    }
+
+    // ... Lanjutkan ke proses penyimpanan jawaban seperti biasa ...
     // Calculate score server-side with type-aware weighted grading
     const total = questions.length;
     let correctCount = 0;
@@ -85,8 +124,12 @@ Deno.serve(async (req) => {
           const wrongHits = studentIndices.filter((idx: number) => !correctIndices.includes(idx)).length;
           const partialRatio = Math.max(0, (correctHits - wrongHits) / correctIndices.length);
           totalScore += weight * partialRatio;
-          if (partialRatio === 1) { isCorrect = true; correctCount++; }
-          else if (partialRatio > 0) { /* partial, not counted as fully correct */ }
+          if (partialRatio === 1) {
+            isCorrect = true;
+            correctCount++;
+          } else if (partialRatio > 0) {
+            /* partial, not counted as fully correct */
+          }
         }
         // skip the final isCorrect block for this type
         return;
@@ -107,7 +150,10 @@ Deno.serve(async (req) => {
           const correctPairs = studentOrder.filter((v: number, i: number) => v === i).length;
           const partialRatio = correctPairs / totalPairs;
           totalScore += weight * partialRatio;
-          if (partialRatio === 1) { isCorrect = true; correctCount++; }
+          if (partialRatio === 1) {
+            isCorrect = true;
+            correctCount++;
+          }
         }
         // skip the final isCorrect block for this type
         return;
@@ -151,16 +197,16 @@ Deno.serve(async (req) => {
         session_id: session.id,
         question_id: q.id,
         selected_answer: typeof ans === "number" ? ans : null,
-        selected_answer_data: (type === "multiple_select" || type === "short_answer" || type === "matching") ? ans : null,
+        selected_answer_data: type === "multiple_select" || type === "short_answer" || type === "matching" ? ans : null,
         is_flagged: flaggedSet.has(i),
       };
     });
     await adminClient.from("student_answers").insert(answerRows);
 
-    return new Response(
-      JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
