@@ -318,8 +318,8 @@ const ExamManager = () => {
     e.target.value = "";
   };
 
-  const downloadTemplate = () => {
-    const templateText = `TEMPLATE SOAL UJIAN
+  const downloadGuide = () => {
+    const templateText = `PANDUAN PENULISAN SOAL UJIAN
 ================================================
 
 PETUNJUK PENGISIAN:
@@ -333,35 +333,46 @@ TIPE SOAL OTOMATIS:
 - Benar/Salah    : Soal dengan 2 opsi "Benar" dan "Salah"
 - PG Kompleks    : Soal dengan lebih dari 1 jawaban bertanda *
 - Isian Singkat  : Soal dengan "Jawaban: ..." tanpa pilihan A-D
-
-================================================
-
-CONTOH PILIHAN GANDA:
-1. Berapakah hasil dari 2x + 3 = 7, maka nilai x adalah...
-A. 1
-B. 2*
-C. 3
-D. 4
-
-CONTOH BENAR/SALAH:
-2. Matahari terbit dari arah Timur
-A. Benar*
-B. Salah
-
-CONTOH PG KOMPLEKS (jawaban lebih dari 1):
-3. Manakah yang termasuk bilangan prima?
-A. 2*
-B. 4
-C. 5*
-D. 9
-
-CONTOH ISIAN SINGKAT:
-4. Ibukota negara Indonesia adalah...
-Jawaban: Jakarta
 `;
     const blob = new Blob([templateText], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "template-soal.txt"; a.click();
+    const a = document.createElement("a"); a.href = url; a.download = "panduan-soal.txt"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadTemplate = async () => {
+    const { Document, Packer, Paragraph, HeadingLevel, TextRun } = await import("docx");
+    const p = (text: string, bold = false) =>
+      new Paragraph({ children: [new TextRun({ text, bold })] });
+    const h = (text: string) =>
+      new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text, bold: true })] });
+
+    const blocks: any[] = [
+      new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "TEMPLATE SOAL UJIAN", bold: true })] }),
+      p("Isi soal sesuai contoh di bawah. Tandai jawaban benar dengan tanda * di akhir pilihan. Hapus soal contoh, lalu tulis soal Anda dengan format yang sama. Untuk rumus matematika gunakan $...$"),
+      p(""),
+      h("Contoh Pilihan Ganda"),
+      p("1. Berapakah hasil dari 2x + 3 = 7?"),
+      p("A. 1"), p("B. 2*"), p("C. 3"), p("D. 4"), p(""),
+      h("Contoh Benar / Salah"),
+      p("2. Matahari terbit dari arah Timur."),
+      p("A. Benar*"), p("B. Salah"), p(""),
+      h("Contoh PG Kompleks (>1 jawaban benar)"),
+      p("3. Manakah yang termasuk bilangan prima?"),
+      p("A. 2*"), p("B. 4"), p("C. 5*"), p("D. 9"), p(""),
+      h("Contoh Isian Singkat"),
+      p("4. Ibukota negara Indonesia adalah..."),
+      p("Jawaban: Jakarta"), p(""),
+      h("Soal Anda mulai di sini"),
+      p("5. Tulis pertanyaan di sini..."),
+      p("A. Pilihan A"), p("B. Pilihan B*"), p("C. Pilihan C"), p("D. Pilihan D"),
+    ];
+
+    const doc = new Document({ sections: [{ children: blocks }] });
+    const blob = await Packer.toBlob(doc);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "template-soal.docx"; a.click();
     URL.revokeObjectURL(url);
   };
 
