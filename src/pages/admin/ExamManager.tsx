@@ -733,9 +733,11 @@ TIPE SOAL OTOMATIS:
               <Upload className="h-4 w-4" /> Import Soal
             </Button>
             <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-2">
-              <FileText className="h-4 w-4" /> Download Template
+              <Download className="h-4 w-4" /> Template Soal (.docx)
             </Button>
-            <input ref={fileInputRef} type="file" accept=".docx,.json" onChange={handleImportQuestions} className="hidden" />
+            <Button variant="ghost" size="sm" onClick={downloadGuide} className="gap-2">
+              <FileText className="h-4 w-4" /> Panduan (.txt)
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">
             📄 Import Word/JSON otomatis mendeteksi tipe soal: PG, B/S, PG Kompleks, dan Isian Singkat.
