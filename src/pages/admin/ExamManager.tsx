@@ -420,8 +420,12 @@ const ExamManager = () => {
         toast.success(`${imported.length} soal berhasil diimport`);
       } else if (ext === "docx") {
         const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        const imported = parseWordText(result.value);
+        const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
+        let imported = parseDocxHtml(htmlResult.value);
+        if (imported.length === 0) {
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          imported = parseWordText(result.value);
+        }
         if (imported.length === 0) { toast.error("Tidak ada soal yang terdeteksi."); return; }
         setQuestions((prev) => [...prev, ...imported]);
         toast.success(`${imported.length} soal berhasil diimport dari Word`);
