@@ -30,7 +30,6 @@ Deno.serve(async (req) => {
     const {
       data: { user },
     } = await userClient.auth.getUser();
-
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
@@ -49,47 +48,44 @@ Deno.serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Ambil data ujian & jadwal
+    // 1. Cek Jadwal Ujian Dulu
     const { data: examData, error: examError } = await adminClient
       .from("exams")
-      .select("id, start_time, end_time, scheduled_date, total_questions")
+      .select("scheduled_date, start_time, end_time")
       .eq("id", exam_id)
       .single();
 
     if (examError || !examData) {
-      console.error("Gagal ambil data ujian:", examError);
       return new Response(JSON.stringify({ error: "Ujian tidak ditemukan" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. Logika Pengecekan Waktu (Diperbaiki)
+    // Logika Waktu Sederhana & Aman
     const now = new Date();
-
-    // Gabungkan tanggal dan waktu menjadi satu objek Date yang valid
     let startTime: Date | null = null;
     let endTime: Date | null = null;
 
     if (examData.scheduled_date && examData.start_time) {
-      // Format: YYYY-MM-DDTHH:mm:ss
+      // Gabungkan tanggal dan waktu mulai
       const startStr = `${examData.scheduled_date}T${examData.start_time}`;
       startTime = new Date(startStr);
     }
 
     if (examData.scheduled_date && examData.end_time) {
+      // Gabungkan tanggal dan waktu selesai
       const endStr = `${examData.scheduled_date}T${examData.end_time}`;
       endTime = new Date(endStr);
     }
 
-    // Validasi Waktu
+    // Validasi Waktu (Jika jadwal diatur)
     if (startTime && now < startTime) {
       return new Response(JSON.stringify({ error: "Ujian belum dimulai." }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
     if (endTime && now > endTime) {
       return new Response(JSON.stringify({ error: "Ujian telah berakhir." }), {
         status: 403,
@@ -97,7 +93,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Ambil Soal untuk Koreksi
+    // 2. Ambil Soal untuk Hitung Nilai
     const { data: questions, error: qError } = await adminClient
       .from("questions")
       .select("id, correct_answer, correct_answer_data, question_type, point_weight")
@@ -110,56 +106,27 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Hitung Nilai
+    // 3. Hitung Skor
     let totalScore = 0;
     let correctCount = 0;
     const totalQuestions = questions.length;
 
     questions.forEach((q, index) => {
-      // PERBAIKAN: Ambil jawaban siswa dengan benar tanpa duplikasi variabel
+      // PERBAIKAN: Ambil jawaban siswa dengan benar
       const studentAnswer = answers[String(index)];
       const type = q.question_type || "multiple_choice";
       const weight = q.point_weight || 1;
       let isCorrect = false;
 
       if (type === "multiple_choice" || type === "true_false") {
-        if (studentAnswer === q.correct_answer) isCorrect = true;
-      } else if (type === "multiple_select") {
-        const correctIndices: number[] = Array.isArray(q.correct_answer_data) ? q.correct_answer_data : [];
-        const studentIndices: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        if (studentIndices.length > 0 && correctIndices.length > 0) {
-          const correctHits = studentIndices.filter((idx: number) => correctIndices.includes(idx)).length;
-          const wrongHits = studentIndices.filter((idx: number) => !correctIndices.includes(idx)).length;
-          const partialRatio = Math.max(0, (correctHits - wrongHits) / correctIndices.length);
-          totalScore += weight * partialRatio;
-          if (partialRatio === 1) {
-            isCorrect = true;
-            correctCount++;
-          }
-        }
-        return; // Lanjut ke soal berikutnya
+        if (String(studentAnswer) === String(q.correct_answer)) isCorrect = true;
       } else if (type === "short_answer") {
         const data = q.correct_answer_data || {};
         const correctAns = (data.answer || "").trim().toLowerCase();
-        const aliases: string[] = (data.aliases || []).map((a: string) => a.trim().toLowerCase());
-        const allAccepted = [correctAns, ...aliases].filter(Boolean);
         const studentText = (typeof studentAnswer === "string" ? studentAnswer : "").trim().toLowerCase();
-        if (studentText && allAccepted.includes(studentText)) {
-          isCorrect = true;
-        }
-      } else if (type === "matching") {
-        const studentOrder: number[] = Array.isArray(studentAnswer) ? studentAnswer : [];
-        if (studentOrder.length > 0) {
-          const correctPairs = studentOrder.filter((v: number, i: number) => v === i).length;
-          const partialRatio = correctPairs / studentOrder.length;
-          totalScore += weight * partialRatio;
-          if (partialRatio === 1) {
-            isCorrect = true;
-            correctCount++;
-          }
-        }
-        return;
+        if (studentText && studentText === correctAns) isCorrect = true;
       }
+      // Tambahkan logika tipe lain jika diperlukan
 
       if (isCorrect) {
         correctCount++;
@@ -169,8 +136,8 @@ Deno.serve(async (req) => {
 
     const finalScore = Math.round(totalScore);
 
-    // 5. Simpan/Update Session (Menangani Submit Ulang)
-    // Cek apakah sudah ada sesi untuk siswa ini di ujian ini
+    // 4. Simpan/Update Session (Handling Duplicate)
+    // Cek apakah sudah ada sesi untuk user ini di ujian ini
     const { data: existingSession } = await adminClient
       .from("exam_sessions")
       .select("id")
@@ -178,30 +145,23 @@ Deno.serve(async (req) => {
       .eq("exam_id", exam_id)
       .single();
 
-    let sessionId: string;
+    let sessionId = existingSession?.id;
 
     if (existingSession) {
-      // UPDATE sesi yang sudah ada
-      const { data: updatedSession, error: updateError } = await adminClient
+      // Update sesi yang ada
+      const { error: updateError } = await adminClient
         .from("exam_sessions")
         .update({
           score: finalScore,
           correct_answers: correctCount,
           total_questions: totalQuestions,
           finished_at: new Date().toISOString(),
-          // Kita tidak update started_at agar tetap waktu awal pertama kali
         })
-        .eq("id", existingSession.id)
-        .select()
-        .single();
+        .eq("id", sessionId);
 
-      if (updateError) throw updateError;
-      sessionId = updatedSession.id;
-
-      // Hapus jawaban lama agar tidak duplikat
-      await adminClient.from("student_answers").delete().eq("session_id", sessionId);
+      if (updateError) throw new Error("Gagal update sesi");
     } else {
-      // INSERT sesi baru
+      // Buat sesi baru
       const { data: newSession, error: insertError } = await adminClient
         .from("exam_sessions")
         .insert({
@@ -210,17 +170,20 @@ Deno.serve(async (req) => {
           score: finalScore,
           correct_answers: correctCount,
           total_questions: totalQuestions,
-          started_at: new Date().toISOString(),
           finished_at: new Date().toISOString(),
         })
         .select()
         .single();
 
-      if (insertError) throw insertError;
+      if (insertError) throw new Error("Gagal simpan sesi");
       sessionId = newSession.id;
     }
 
-    // 6. Simpan Jawaban Detail
+    // 5. Simpan Jawaban Detail (Hapus lama dulu jika update)
+    if (existingSession) {
+      await adminClient.from("student_answers").delete().eq("session_id", sessionId);
+    }
+
     const flaggedSet = new Set(flagged_indices || []);
     const answerRows = questions.map((q, i) => {
       const ans = answers[String(i)];
@@ -229,7 +192,7 @@ Deno.serve(async (req) => {
         session_id: sessionId,
         question_id: q.id,
         selected_answer: typeof ans === "number" ? ans : null,
-        selected_answer_data: type === "multiple_select" || type === "short_answer" || type === "matching" ? ans : null,
+        selected_answer_data: ["multiple_select", "short_answer", "matching"].includes(type) ? ans : null,
         is_flagged: flaggedSet.has(i),
       };
     });
@@ -237,19 +200,14 @@ Deno.serve(async (req) => {
     await adminClient.from("student_answers").insert(answerRows);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        score: finalScore,
-        correct: correctCount,
-        total: totalQuestions,
-      }),
+      JSON.stringify({ success: true, score: finalScore, correct: correctCount, total: totalQuestions }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       },
     );
   } catch (err) {
-    console.error("Error submitting exam:", err);
+    console.error("Submit Exam Error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
