@@ -68,7 +68,6 @@ Deno.serve(async (req) => {
 
     questions.forEach((q, _i) => {
       const studentAnswer = answers[String(_i)];
-      const studentAnswer = answers[String(i)];
       const type = q.question_type || "multiple_choice";
       const weight = q.point_weight || 1;
       maxScore += weight;
@@ -121,41 +120,77 @@ Deno.serve(async (req) => {
 
     const score = Math.round(totalScore);
 
-    // Save exam session
-    const { data: session, error: sessionError } = await adminClient
+    // Check if session already exists for this student and exam
+    const { data: existingSession } = await adminClient
       .from("exam_sessions")
-      .insert({
-        student_id: user.id,
-        exam_id,
-        score,
-        correct_answers: correctCount,
-        total_questions: total,
-        finished_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      .select("id")
+      .eq("student_id", user.id)
+      .eq("exam_id", exam_id)
+      .maybeSingle();
 
-    if (sessionError) {
-      return new Response(JSON.stringify({ error: "Failed to save session" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let session;
+    
+    if (existingSession) {
+      // Update existing session
+      const { data: updatedSession, error: updateError } = await adminClient
+        .from("exam_sessions")
+        .update({
+          score,
+          correct_answers: correctCount,
+          total_questions: total,
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", existingSession.id)
+        .select()
+        .single();
+      
+      if (updateError) {
+        return new Response(JSON.stringify({ error: "Failed to update session" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      session = updatedSession;
+    } else {
+      // Create new session
+      const { data: newSession, error: sessionError } = await adminClient
+        .from("exam_sessions")
+        .insert({
+          student_id: user.id,
+          exam_id,
+          score,
+          correct_answers: correctCount,
+          total_questions: total,
+          finished_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (sessionError) {
+        return new Response(JSON.stringify({ error: "Failed to save session" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      session = newSession;
     }
 
-    // Save individual answers
-    const flaggedSet = new Set(flagged_indices || []);
-    const answerRows = questions.map((q, i) => {
-      const ans = answers[String(i)];
-      const type = q.question_type || "multiple_choice";
-      return {
-        session_id: session.id,
-        question_id: q.id,
-        selected_answer: typeof ans === "number" ? ans : null,
-        selected_answer_data: (type === "multiple_select" || type === "short_answer" || type === "matching") ? ans : null,
-        is_flagged: flaggedSet.has(i),
-      };
-    });
-    await adminClient.from("student_answers").insert(answerRows);
+    // Save individual answers (only for new sessions to avoid duplicates)
+    if (!existingSession) {
+      const flaggedSet = new Set(flagged_indices || []);
+      const answerRows = questions.map((q, i) => {
+        const ans = answers[String(i)];
+        const type = q.question_type || "multiple_choice";
+        return {
+          session_id: session.id,
+          question_id: q.id,
+          selected_answer: typeof ans === "number" ? ans : null,
+          selected_answer_data: (type === "multiple_select" || type === "short_answer" || type === "matching") ? ans : null,
+          is_flagged: flaggedSet.has(i),
+        };
+      });
+      await adminClient.from("student_answers").insert(answerRows);
+    }
 
     return new Response(
       JSON.stringify({ success: true, score, correct: correctCount, total, maxScore }),
