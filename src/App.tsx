@@ -22,6 +22,7 @@ import Settings from "./pages/admin/Settings";
 import ViolationHistory from "./pages/admin/ViolationHistory";
 import LiveMonitor from "./pages/admin/LiveMonitor";
 import SyncStatus from "./pages/admin/SyncStatus";
+import AntiCheatTest from "./pages/admin/AntiCheatTest";
 import NotFound from "./pages/NotFound";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfUse from "./pages/TermsOfUse";
@@ -67,6 +68,7 @@ const App = () => {
               <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
               <Route path="/admin/violations" element={<AdminRoute><ViolationHistory /></AdminRoute>} />
               <Route path="/admin/sync" element={<AdminRoute><SyncStatus /></AdminRoute>} />
+              <Route path="/admin/anti-cheat-test" element={<AdminRoute><AntiCheatTest /></AdminRoute>} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfUse />} />
               <Route path="*" element={<NotFound />} />
