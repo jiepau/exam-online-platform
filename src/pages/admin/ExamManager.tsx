@@ -106,6 +106,7 @@ const ExamManager = () => {
       scheduled_date: scheduledDate || null,
       start_time: startTime || null,
       end_time: endTime || null,
+      has_essay: hasEssay,
     };
     if (editingExam) {
       const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
