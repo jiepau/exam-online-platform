@@ -129,7 +129,11 @@ const ExamManager = () => {
 
   const handleEditExam = (exam: Exam) => {
     setEditingExam(exam); setTitle(exam.title); setSubject(exam.subject);
-    setDuration(exam.duration); setToken(exam.token); setAcademicYear(exam.academic_year || ""); setShowCreate(true);
+    setDuration(exam.duration); setToken(exam.token); setAcademicYear(exam.academic_year || "");
+    setScheduledDate(exam.scheduled_date || "");
+    setStartTime(exam.start_time ? exam.start_time.slice(0, 5) : "");
+    setEndTime(exam.end_time ? exam.end_time.slice(0, 5) : "");
+    setShowCreate(true);
   };
 
   const openQuestions = async (examId: string) => {
