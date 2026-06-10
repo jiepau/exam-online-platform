@@ -138,6 +138,7 @@ const ExamManager = () => {
     setScheduledDate(exam.scheduled_date || "");
     setStartTime(exam.start_time ? exam.start_time.slice(0, 5) : "");
     setEndTime(exam.end_time ? exam.end_time.slice(0, 5) : "");
+    setHasEssay(exam.has_essay ?? false);
     setShowCreate(true);
   };
 
