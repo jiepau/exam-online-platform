@@ -856,6 +856,34 @@ TIPE SOAL OTOMATIS:
                 <Input value={token} onChange={(e) => setToken(e.target.value.toUpperCase())} placeholder="TOKEN123" className="font-mono tracking-wider" />
               </div>
             </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Jadwal Ujian <span className="text-muted-foreground font-normal">(opsional)</span></label>
+                {(scheduledDate || startTime || endTime) && (
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs"
+                    onClick={() => { setScheduledDate(""); setStartTime(""); setEndTime(""); }}>
+                    Hapus Jadwal
+                  </Button>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Tanggal Ujian</label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Jam Mulai</label>
+                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Jam Selesai</label>
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Jika tanggal/jam diisi, siswa hanya bisa mengumpulkan ujian dalam rentang waktu tersebut. Kosongkan agar ujian dapat diakses kapan saja saat aktif.
+              </p>
+            </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}
             </Button>
