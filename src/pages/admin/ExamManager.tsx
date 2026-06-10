@@ -86,6 +86,7 @@ const ExamManager = () => {
   const resetForm = () => {
     setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
     setScheduledDate(""); setStartTime(""); setEndTime("");
+    setHasEssay(false);
     setEditingExam(null);
   };
 
