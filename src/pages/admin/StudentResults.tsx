@@ -27,6 +27,7 @@ interface SessionResult {
   exam_number?: string;
   student_id?: string;
   essay_score?: number | null;
+  exam_has_essay?: boolean;
 }
 
 interface ClassOption {
