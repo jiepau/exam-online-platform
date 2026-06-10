@@ -62,35 +62,31 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Logika Waktu Sederhana & Aman
+    // Logika Waktu (Asia/Jakarta = UTC+7)
     const now = new Date();
     let startTime: Date | null = null;
     let endTime: Date | null = null;
 
     if (examData.scheduled_date && examData.start_time) {
-      // Gabungkan tanggal dan waktu mulai
-      const startStr = `${examData.scheduled_date}T${examData.start_time}`;
-      startTime = new Date(startStr);
+      // Tafsirkan jadwal sebagai waktu lokal WIB (UTC+7)
+      startTime = new Date(`${examData.scheduled_date}T${examData.start_time}+07:00`);
     }
-
     if (examData.scheduled_date && examData.end_time) {
-      // Gabungkan tanggal dan waktu selesai
-      const endStr = `${examData.scheduled_date}T${examData.end_time}`;
-      endTime = new Date(endStr);
+      endTime = new Date(`${examData.scheduled_date}T${examData.end_time}+07:00`);
     }
 
     // Validasi Waktu (Jika jadwal diatur)
     if (startTime && now < startTime) {
-      return new Response(JSON.stringify({ error: "Ujian belum dimulai." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: `Ujian belum dimulai. Jadwal: ${startTime.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}` }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
     if (endTime && now > endTime) {
-      return new Response(JSON.stringify({ error: "Ujian telah berakhir." }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: `Ujian telah berakhir pada ${endTime.toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}` }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     // 2. Ambil Soal untuk Hitung Nilai
