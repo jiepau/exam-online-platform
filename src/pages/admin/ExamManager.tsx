@@ -43,6 +43,7 @@ interface Exam {
   scheduled_date: string | null;
   start_time: string | null;
   end_time: string | null;
+  has_essay: boolean;
 }
 
 interface QuestionForm {
