@@ -156,8 +156,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           duration: number
+          end_time: string | null
           id: string
           is_active: boolean
+          scheduled_date: string | null
+          start_time: string | null
           subject: string
           title: string
           token: string
@@ -168,8 +171,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration?: number
+          end_time?: string | null
           id?: string
           is_active?: boolean
+          scheduled_date?: string | null
+          start_time?: string | null
           subject: string
           title: string
           token: string
@@ -180,8 +186,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           duration?: number
+          end_time?: string | null
           id?: string
           is_active?: boolean
+          scheduled_date?: string | null
+          start_time?: string | null
           subject?: string
           title?: string
           token?: string

@@ -39,6 +39,9 @@ interface Exam {
   is_active: boolean;
   created_at: string;
   academic_year: string | null;
+  scheduled_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 interface QuestionForm {
@@ -61,6 +64,9 @@ const ExamManager = () => {
   const [duration, setDuration] = useState(60);
   const [token, setToken] = useState("");
   const [academicYear, setAcademicYear] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,19 +81,34 @@ const ExamManager = () => {
   useEffect(() => { fetchExams(); }, []);
 
   const resetForm = () => {
-    setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear(""); setEditingExam(null);
+    setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
+    setScheduledDate(""); setStartTime(""); setEndTime("");
+    setEditingExam(null);
   };
 
   const handleSaveExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !subject || !token) { toast.error("Mohon isi semua kolom"); return; }
+    if (!title || !subject || !token) { toast.error("Mohon isi semua kolom wajib"); return; }
+    if ((startTime && !endTime) || (!startTime && endTime)) {
+      toast.error("Jam mulai dan jam selesai harus diisi keduanya"); return;
+    }
+    if (startTime && endTime && startTime >= endTime) {
+      toast.error("Jam selesai harus setelah jam mulai"); return;
+    }
     setLoading(true);
+    const payload = {
+      title, subject, duration, token,
+      academic_year: academicYear || null,
+      scheduled_date: scheduledDate || null,
+      start_time: startTime || null,
+      end_time: endTime || null,
+    };
     if (editingExam) {
-      const { error } = await supabase.from("exams").update({ title, subject, duration, token, academic_year: academicYear || null }).eq("id", editingExam.id);
+      const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
       if (error) toast.error(error.message);
       else { toast.success("Ujian berhasil diperbarui"); setShowCreate(false); resetForm(); fetchExams(); }
     } else {
-      const { error } = await supabase.from("exams").insert({ title, subject, duration, token, academic_year: academicYear || null, created_by: user?.id });
+      const { error } = await supabase.from("exams").insert({ ...payload, created_by: user?.id });
       if (error) toast.error(error.message);
       else { toast.success("Ujian berhasil dibuat"); setShowCreate(false); resetForm(); fetchExams(); }
     }
@@ -108,7 +129,11 @@ const ExamManager = () => {
 
   const handleEditExam = (exam: Exam) => {
     setEditingExam(exam); setTitle(exam.title); setSubject(exam.subject);
-    setDuration(exam.duration); setToken(exam.token); setAcademicYear(exam.academic_year || ""); setShowCreate(true);
+    setDuration(exam.duration); setToken(exam.token); setAcademicYear(exam.academic_year || "");
+    setScheduledDate(exam.scheduled_date || "");
+    setStartTime(exam.start_time ? exam.start_time.slice(0, 5) : "");
+    setEndTime(exam.end_time ? exam.end_time.slice(0, 5) : "");
+    setShowCreate(true);
   };
 
   const openQuestions = async (examId: string) => {
@@ -831,6 +856,34 @@ TIPE SOAL OTOMATIS:
                 <Input value={token} onChange={(e) => setToken(e.target.value.toUpperCase())} placeholder="TOKEN123" className="font-mono tracking-wider" />
               </div>
             </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Jadwal Ujian <span className="text-muted-foreground font-normal">(opsional)</span></label>
+                {(scheduledDate || startTime || endTime) && (
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs"
+                    onClick={() => { setScheduledDate(""); setStartTime(""); setEndTime(""); }}>
+                    Hapus Jadwal
+                  </Button>
+                )}
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-muted-foreground">Tanggal Ujian</label>
+                <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Jam Mulai</label>
+                  <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">Jam Selesai</label>
+                  <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Jika tanggal/jam diisi, siswa hanya bisa mengumpulkan ujian dalam rentang waktu tersebut. Kosongkan agar ujian dapat diakses kapan saja saat aktif.
+              </p>
+            </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}
             </Button>
@@ -905,6 +958,12 @@ TIPE SOAL OTOMATIS:
                 {exam.subject} • {exam.duration} menit{exam.academic_year ? ` • TA ${exam.academic_year}` : ""} • Token:{" "}
                 <span className="font-mono font-bold text-primary">{exam.token}</span>
               </p>
+              {exam.scheduled_date && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  📅 {new Date(exam.scheduled_date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                  {exam.start_time && exam.end_time && ` • ${exam.start_time.slice(0,5)} – ${exam.end_time.slice(0,5)}`}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => handleToggleActive(exam)} title={exam.is_active ? "Nonaktifkan" : "Aktifkan"}>
