@@ -64,7 +64,17 @@ const ExamResult = () => {
         <p className="text-muted-foreground mb-1">{studentName}</p>
         <p className="text-sm text-muted-foreground mb-6">{examTitle}</p>
 
-        {offline && !pendingSynced && (
+        {errorMessage && (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 mb-4 flex items-start gap-3">
+            <WifiOff className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <p className="text-sm text-foreground leading-relaxed text-left">
+              <strong>Gagal mengirim:</strong> {errorMessage}<br />
+              <span className="text-muted-foreground">Jawaban disimpan lokal dan akan dicoba kirim ulang otomatis. Hubungi pengawas jika terus gagal.</span>
+            </p>
+          </div>
+        )}
+
+        {offline && !pendingSynced && !errorMessage && (
           <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 mb-4 flex items-center gap-3">
             <WifiOff className="h-5 w-5 text-warning shrink-0" />
             <p className="text-sm text-foreground leading-relaxed text-left">
