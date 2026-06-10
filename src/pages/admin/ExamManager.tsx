@@ -958,6 +958,12 @@ TIPE SOAL OTOMATIS:
                 {exam.subject} • {exam.duration} menit{exam.academic_year ? ` • TA ${exam.academic_year}` : ""} • Token:{" "}
                 <span className="font-mono font-bold text-primary">{exam.token}</span>
               </p>
+              {exam.scheduled_date && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  📅 {new Date(exam.scheduled_date).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                  {exam.start_time && exam.end_time && ` • ${exam.start_time.slice(0,5)} – ${exam.end_time.slice(0,5)}`}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => handleToggleActive(exam)} title={exam.is_active ? "Nonaktifkan" : "Aktifkan"}>
