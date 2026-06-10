@@ -141,13 +141,20 @@ const ExamPage = () => {
         body: submitPayload,
       });
 
-      if (error) {
-        console.error("Failed to submit exam:", error);
-        // Save for retry
+      // Edge function returns error in body even on non-2xx
+      const fnError = (data as any)?.error;
+      if (error || fnError) {
+        const msg = fnError || error?.message || "Gagal mengirim jawaban";
+        console.error("Failed to submit exam:", msg);
+        // Save for retry & show error to user before navigating
         savePendingSubmit(state?.examId || "", submitPayload);
-      } else {
-        clearPendingSubmit(state?.examId || "");
+        await clearDraft();
+        navigate("/result", {
+          state: { studentName, examTitle, offline: true, errorMessage: msg },
+        });
+        return;
       }
+      clearPendingSubmit(state?.examId || "");
 
       await clearDraft();
 
