@@ -13,12 +13,14 @@ const ExamResult = () => {
     studentName: string;
     examTitle: string;
     offline?: boolean;
+    errorMessage?: string;
   } | null;
   const [pendingSynced, setPendingSynced] = useState(false);
 
   const studentName = state?.studentName || "";
   const examTitle = state?.examTitle || "";
   const offline = state?.offline || false;
+  const errorMessage = state?.errorMessage;
 
   // Auto-retry pending submissions when online
   useEffect(() => {
