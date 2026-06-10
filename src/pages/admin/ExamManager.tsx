@@ -39,6 +39,9 @@ interface Exam {
   is_active: boolean;
   created_at: string;
   academic_year: string | null;
+  scheduled_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
 }
 
 interface QuestionForm {
