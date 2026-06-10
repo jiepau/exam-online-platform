@@ -890,6 +890,15 @@ TIPE SOAL OTOMATIS:
                 Jika tanggal/jam diisi, siswa hanya bisa mengumpulkan ujian dalam rentang waktu tersebut. Kosongkan agar ujian dapat diakses kapan saja saat aktif.
               </p>
             </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center justify-between gap-3">
+              <div>
+                <label className="text-sm font-medium">Memiliki Bagian Essay</label>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Aktifkan jika ujian ini ada soal essay yang perlu dinilai manual. Jika nonaktif, hasil siswa langsung berstatus "Selesai" tanpa menunggu input nilai essay.
+                </p>
+              </div>
+              <Switch checked={hasEssay} onCheckedChange={setHasEssay} />
+            </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}
             </Button>
