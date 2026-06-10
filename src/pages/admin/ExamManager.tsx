@@ -64,6 +64,9 @@ const ExamManager = () => {
   const [duration, setDuration] = useState(60);
   const [token, setToken] = useState("");
   const [academicYear, setAcademicYear] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
@@ -78,19 +81,34 @@ const ExamManager = () => {
   useEffect(() => { fetchExams(); }, []);
 
   const resetForm = () => {
-    setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear(""); setEditingExam(null);
+    setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
+    setScheduledDate(""); setStartTime(""); setEndTime("");
+    setEditingExam(null);
   };
 
   const handleSaveExam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !subject || !token) { toast.error("Mohon isi semua kolom"); return; }
+    if (!title || !subject || !token) { toast.error("Mohon isi semua kolom wajib"); return; }
+    if ((startTime && !endTime) || (!startTime && endTime)) {
+      toast.error("Jam mulai dan jam selesai harus diisi keduanya"); return;
+    }
+    if (startTime && endTime && startTime >= endTime) {
+      toast.error("Jam selesai harus setelah jam mulai"); return;
+    }
     setLoading(true);
+    const payload = {
+      title, subject, duration, token,
+      academic_year: academicYear || null,
+      scheduled_date: scheduledDate || null,
+      start_time: startTime || null,
+      end_time: endTime || null,
+    };
     if (editingExam) {
-      const { error } = await supabase.from("exams").update({ title, subject, duration, token, academic_year: academicYear || null }).eq("id", editingExam.id);
+      const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
       if (error) toast.error(error.message);
       else { toast.success("Ujian berhasil diperbarui"); setShowCreate(false); resetForm(); fetchExams(); }
     } else {
-      const { error } = await supabase.from("exams").insert({ title, subject, duration, token, academic_year: academicYear || null, created_by: user?.id });
+      const { error } = await supabase.from("exams").insert({ ...payload, created_by: user?.id });
       if (error) toast.error(error.message);
       else { toast.success("Ujian berhasil dibuat"); setShowCreate(false); resetForm(); fetchExams(); }
     }
