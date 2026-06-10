@@ -27,6 +27,7 @@ interface SessionResult {
   exam_number?: string;
   student_id?: string;
   essay_score?: number | null;
+  exam_has_essay?: boolean;
 }
 
 interface ClassOption {
@@ -92,7 +93,7 @@ const StudentResults = () => {
 
     const { data: sessions } = await supabase
       .from("exam_sessions")
-      .select("*, exams(title, subject)")
+      .select("*, exams(title, subject, has_essay)")
       .order("started_at", { ascending: false });
 
     if (sessions) {
@@ -118,6 +119,7 @@ const StudentResults = () => {
           exam_number: profile?.exam_number || undefined,
           student_id: s.student_id,
           essay_score: s.essay_score ?? null,
+          exam_has_essay: s.exams?.has_essay ?? false,
         };
       });
 
@@ -474,7 +476,9 @@ const StudentResults = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {r.finished_at ? (
-                        hasEssay ? (
+                        !r.exam_has_essay ? (
+                          <span className="text-xs text-success">Selesai</span>
+                        ) : hasEssay ? (
                           <span className="text-xs text-muted-foreground">Lihat detail</span>
                         ) : (
                           <span className="text-xs text-warning">Perlu essay</span>

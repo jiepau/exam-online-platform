@@ -157,6 +157,7 @@ export type Database = {
           created_by: string | null
           duration: number
           end_time: string | null
+          has_essay: boolean
           id: string
           is_active: boolean
           scheduled_date: string | null
@@ -172,6 +173,7 @@ export type Database = {
           created_by?: string | null
           duration?: number
           end_time?: string | null
+          has_essay?: boolean
           id?: string
           is_active?: boolean
           scheduled_date?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           created_by?: string | null
           duration?: number
           end_time?: string | null
+          has_essay?: boolean
           id?: string
           is_active?: boolean
           scheduled_date?: string | null

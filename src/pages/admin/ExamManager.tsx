@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MathText from "@/components/exam/MathText";
 import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "matching";
@@ -42,6 +43,7 @@ interface Exam {
   scheduled_date: string | null;
   start_time: string | null;
   end_time: string | null;
+  has_essay: boolean;
 }
 
 interface QuestionForm {
@@ -67,6 +69,7 @@ const ExamManager = () => {
   const [scheduledDate, setScheduledDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [hasEssay, setHasEssay] = useState(false);
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
@@ -83,6 +86,7 @@ const ExamManager = () => {
   const resetForm = () => {
     setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
     setScheduledDate(""); setStartTime(""); setEndTime("");
+    setHasEssay(false);
     setEditingExam(null);
   };
 
@@ -102,6 +106,7 @@ const ExamManager = () => {
       scheduled_date: scheduledDate || null,
       start_time: startTime || null,
       end_time: endTime || null,
+      has_essay: hasEssay,
     };
     if (editingExam) {
       const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
@@ -133,6 +138,7 @@ const ExamManager = () => {
     setScheduledDate(exam.scheduled_date || "");
     setStartTime(exam.start_time ? exam.start_time.slice(0, 5) : "");
     setEndTime(exam.end_time ? exam.end_time.slice(0, 5) : "");
+    setHasEssay(exam.has_essay ?? false);
     setShowCreate(true);
   };
 
@@ -883,6 +889,15 @@ TIPE SOAL OTOMATIS:
               <p className="text-[11px] text-muted-foreground leading-relaxed">
                 Jika tanggal/jam diisi, siswa hanya bisa mengumpulkan ujian dalam rentang waktu tersebut. Kosongkan agar ujian dapat diakses kapan saja saat aktif.
               </p>
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 flex items-center justify-between gap-3">
+              <div>
+                <label className="text-sm font-medium">Memiliki Bagian Essay</label>
+                <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                  Aktifkan jika ujian ini ada soal essay yang perlu dinilai manual. Jika nonaktif, hasil siswa langsung berstatus "Selesai" tanpa menunggu input nilai essay.
+                </p>
+              </div>
+              <Switch checked={hasEssay} onCheckedChange={setHasEssay} />
             </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}

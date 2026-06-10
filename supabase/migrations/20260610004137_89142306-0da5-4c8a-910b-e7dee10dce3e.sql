@@ -1,0 +1,1 @@
+ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS has_essay boolean NOT NULL DEFAULT false;
