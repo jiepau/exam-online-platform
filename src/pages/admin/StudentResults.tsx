@@ -476,7 +476,9 @@ const StudentResults = () => {
                     </td>
                     <td className="px-4 py-3 text-center">
                       {r.finished_at ? (
-                        hasEssay ? (
+                        !r.exam_has_essay ? (
+                          <span className="text-xs text-success">Selesai</span>
+                        ) : hasEssay ? (
                           <span className="text-xs text-muted-foreground">Lihat detail</span>
                         ) : (
                           <span className="text-xs text-warning">Perlu essay</span>
