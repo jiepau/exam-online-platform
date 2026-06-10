@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import MathText from "@/components/exam/MathText";
 import { exportToExcel } from "@/lib/exportExcel";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 
 export type QuestionType = "multiple_choice" | "true_false" | "multiple_select" | "short_answer" | "matching";
