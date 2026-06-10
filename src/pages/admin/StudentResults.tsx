@@ -93,7 +93,7 @@ const StudentResults = () => {
 
     const { data: sessions } = await supabase
       .from("exam_sessions")
-      .select("*, exams(title, subject)")
+      .select("*, exams(title, subject, has_essay)")
       .order("started_at", { ascending: false });
 
     if (sessions) {
