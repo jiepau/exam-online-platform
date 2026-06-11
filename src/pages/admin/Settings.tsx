@@ -244,6 +244,41 @@ const Settings = () => {
         </div>
 
 
+        {/* Reset Cache */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+            <RefreshCw className="h-4 w-4 text-primary" /> Reset Cache Aplikasi
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            Gunakan jika tampilan pengaturan terasa tidak update (misal: bagian Anti-Cheat hilang).
+            Tombol ini akan menghapus cache browser, service worker, dan memuat ulang halaman.
+          </p>
+          <Button
+            variant="outline"
+            onClick={async () => {
+              try {
+                toast.loading("Membersihkan cache...");
+                localStorage.removeItem("app_settings_cache");
+                if ("caches" in window) {
+                  const keys = await caches.keys();
+                  await Promise.all(keys.map((k) => caches.delete(k)));
+                }
+                if ("serviceWorker" in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map((r) => r.unregister()));
+                }
+                toast.success("Cache dibersihkan. Memuat ulang...");
+                setTimeout(() => window.location.reload(), 600);
+              } catch (e: any) {
+                toast.error("Gagal reset cache: " + e.message);
+              }
+            }}
+            className="gap-2 w-full"
+          >
+            <RefreshCw className="h-4 w-4" /> Reset Cache & Reload
+          </Button>
+        </div>
+
         {/* Save */}
         <Button
           onClick={handleSave}
@@ -252,6 +287,7 @@ const Settings = () => {
         >
           <Save className="h-5 w-5" /> {saving ? "Menyimpan..." : "Simpan Pengaturan"}
         </Button>
+
       </div>
     </AdminLayout>
   );
