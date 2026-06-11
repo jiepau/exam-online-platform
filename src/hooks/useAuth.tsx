@@ -27,8 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select("full_name").eq("user_id", userId).maybeSingle(),
     ]);
-    if (roleRes.data) setRole(roleRes.data.role as AppRole);
-    if (profileRes.data) setProfile(profileRes.data);
+
+    setRole((roleRes.data?.role as AppRole) ?? null);
+    setProfile(profileRes.data ?? null);
   };
 
   useEffect(() => {
@@ -36,7 +37,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        setTimeout(() => fetchUserData(currentUser.id), 0);
+        setLoading(true);
+        await fetchUserData(currentUser.id);
       } else {
         setRole(null);
         setProfile(null);
@@ -44,11 +46,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        fetchUserData(currentUser.id);
+        await fetchUserData(currentUser.id);
+      } else {
+        setRole(null);
+        setProfile(null);
       }
       setLoading(false);
     });
