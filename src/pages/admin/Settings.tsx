@@ -50,6 +50,13 @@ const Settings = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (sessionStorage.getItem("cache_reset_reload") === "1") {
+      sessionStorage.removeItem("cache_reset_reload");
+      toast.success("Cache direset dan halaman di-reload");
+    }
+  }, []);
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
