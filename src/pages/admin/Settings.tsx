@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Settings as SettingsIcon, Upload, Save, Palette, ShieldAlert } from "lucide-react";
+import { Settings as SettingsIcon, Upload, Save, Palette, ShieldAlert, RefreshCw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
