@@ -32,31 +32,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setProfile(profileRes.data ?? null);
   };
 
+  const loadSession = async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUser = session?.user ?? null;
+
+    setUser(currentUser);
+    if (currentUser) {
+      await fetchUserData(currentUser.id);
+    } else {
+      setRole(null);
+      setProfile(null);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
         setLoading(true);
-        await fetchUserData(currentUser.id);
+        setTimeout(async () => {
+          await fetchUserData(currentUser.id);
+          setLoading(false);
+        }, 0);
       } else {
         setRole(null);
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        await fetchUserData(currentUser.id);
-      } else {
-        setRole(null);
-        setProfile(null);
-      }
-      setLoading(false);
-    });
+    loadSession();
 
     return () => subscription.unsubscribe();
   }, []);
