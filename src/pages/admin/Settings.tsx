@@ -50,6 +50,13 @@ const Settings = () => {
     }
   }, [settings]);
 
+  useEffect(() => {
+    if (sessionStorage.getItem("cache_reset_reload") === "1") {
+      sessionStorage.removeItem("cache_reset_reload");
+      toast.success("Cache direset dan halaman di-reload");
+    }
+  }, []);
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -267,7 +274,7 @@ const Settings = () => {
                   const regs = await navigator.serviceWorker.getRegistrations();
                   await Promise.all(regs.map((r) => r.unregister()));
                 }
-                toast.success("Cache dibersihkan. Memuat ulang...");
+                sessionStorage.setItem("cache_reset_reload", "1");
                 setTimeout(() => window.location.reload(), 600);
               } catch (e: any) {
                 toast.error("Gagal reset cache: " + e.message);
