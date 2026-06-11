@@ -27,31 +27,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select("full_name").eq("user_id", userId).maybeSingle(),
     ]);
-    if (roleRes.data) setRole(roleRes.data.role as AppRole);
-    if (profileRes.data) setProfile(profileRes.data);
+
+    setRole((roleRes.data?.role as AppRole) ?? null);
+    setProfile(profileRes.data ?? null);
+  };
+
+  const loadSession = async () => {
+    setLoading(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const currentUser = session?.user ?? null;
+
+    setUser(currentUser);
+    if (currentUser) {
+      await fetchUserData(currentUser.id);
+    } else {
+      setRole(null);
+      setProfile(null);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) {
-        setTimeout(() => fetchUserData(currentUser.id), 0);
+        setLoading(true);
+        setTimeout(async () => {
+          await fetchUserData(currentUser.id);
+          setLoading(false);
+        }, 0);
       } else {
         setRole(null);
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      if (currentUser) {
-        fetchUserData(currentUser.id);
-      }
-      setLoading(false);
-    });
+    loadSession();
 
     return () => subscription.unsubscribe();
   }, []);
