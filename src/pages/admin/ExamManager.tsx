@@ -1043,6 +1043,9 @@ TIPE SOAL OTOMATIS:
               <Button variant="ghost" size="sm" onClick={() => handleEditExam(exam)} title="Edit Ujian">
                 <Pencil className="h-4 w-4" />
               </Button>
+              <Button variant="ghost" size="sm" onClick={() => handleDuplicateExam(exam)} title="Duplikat Ujian" disabled={loading}>
+                <Copy className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => handleDelete(exam.id)} className="text-destructive">
                 <Trash2 className="h-4 w-4" />
               </Button>
