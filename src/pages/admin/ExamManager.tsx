@@ -132,6 +132,56 @@ const ExamManager = () => {
     else { toast.success("Ujian dihapus"); fetchExams(); }
   };
 
+  const handleDuplicateExam = async (exam: Exam) => {
+    if (!confirm(`Duplikat ujian "${exam.title}" beserta semua soalnya?`)) return;
+    setLoading(true);
+    try {
+      const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+      const newPayload = {
+        title: `${exam.title} (Salinan)`,
+        subject: exam.subject,
+        duration: exam.duration,
+        token: `${exam.token}-${suffix}`.slice(0, 50),
+        academic_year: exam.academic_year,
+        scheduled_date: exam.scheduled_date,
+        start_time: exam.start_time,
+        end_time: exam.end_time,
+        has_essay: exam.has_essay,
+        is_active: false,
+        created_by: user?.id,
+      };
+      const { data: newExam, error: examErr } = await supabase
+        .from("exams").insert(newPayload).select().single();
+      if (examErr || !newExam) throw examErr || new Error("Gagal membuat ujian");
+
+      const { data: oldQuestions, error: qErr } = await supabase
+        .from("questions").select("*").eq("exam_id", exam.id).order("sort_order");
+      if (qErr) throw qErr;
+
+      if (oldQuestions && oldQuestions.length > 0) {
+        const toInsert = oldQuestions.map((q: any) => ({
+          exam_id: newExam.id,
+          question_text: q.question_text,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          image_url: q.image_url,
+          sort_order: q.sort_order,
+          question_type: q.question_type,
+          correct_answer_data: q.correct_answer_data,
+          point_weight: q.point_weight,
+        }));
+        const { error: insErr } = await supabase.from("questions").insert(toInsert as any);
+        if (insErr) throw insErr;
+      }
+      toast.success(`Ujian diduplikat (${oldQuestions?.length || 0} soal disalin). Status: Nonaktif`);
+      fetchExams();
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal menduplikat ujian");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleEditExam = (exam: Exam) => {
     setEditingExam(exam); setTitle(exam.title); setSubject(exam.subject);
     setDuration(exam.duration); setToken(exam.token); setAcademicYear(exam.academic_year || "");
