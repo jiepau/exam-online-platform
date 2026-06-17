@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, FileText, ImagePlus, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Eye, Upload, FileText, ImagePlus, Download, Copy } from "lucide-react";
 import mammoth from "mammoth";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
