@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { isStaff } from "@/lib/permissions";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { usePWAInstall } from "@/hooks/usePWAInstall";
 import AppFooter from "@/components/AppFooter";
