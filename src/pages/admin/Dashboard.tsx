@@ -15,24 +15,42 @@ interface ViolationLog {
 }
 
 const Dashboard = () => {
+  const { user, role } = useAuth();
+  const isTeacher = role === "teacher";
   const [stats, setStats] = useState({ exams: 0, activeExams: 0, sessions: 0 });
   const [recentViolations, setRecentViolations] = useState<ViolationLog[]>([]);
   const [newAlert, setNewAlert] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     const fetchStats = async () => {
-      const [examsRes, activeRes, sessionsRes] = await Promise.all([
-        supabase.from("exams").select("id", { count: "exact", head: true }),
-        supabase.from("exams").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("exam_sessions").select("id", { count: "exact", head: true }),
-      ]);
+      // Guru: hanya ujian miliknya sendiri
+      let examQuery = supabase.from("exams").select("id");
+      if (isTeacher) examQuery = examQuery.eq("created_by", user.id);
+      const { data: myExams } = await examQuery;
+      const examIds = (myExams || []).map((e) => e.id);
+
+      let activeQuery = supabase.from("exams").select("id", { count: "exact", head: true }).eq("is_active", true);
+      if (isTeacher) activeQuery = activeQuery.eq("created_by", user.id);
+
+      let sessionQuery = supabase.from("exam_sessions").select("id", { count: "exact", head: true });
+      if (isTeacher) {
+        if (examIds.length === 0) {
+          setStats({ exams: 0, activeExams: 0, sessions: 0 });
+          return;
+        }
+        sessionQuery = sessionQuery.in("exam_id", examIds);
+      }
+
+      const [activeRes, sessionsRes] = await Promise.all([activeQuery, sessionQuery]);
       setStats({
-        exams: examsRes.count || 0,
+        exams: examIds.length,
         activeExams: activeRes.count || 0,
         sessions: sessionsRes.count || 0,
       });
     };
     fetchStats();
+
 
     // Fetch recent violations
     const fetchViolations = async () => {
