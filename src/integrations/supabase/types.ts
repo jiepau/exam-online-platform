@@ -47,6 +47,63 @@ export type Database = {
         }
         Relationships: []
       }
+      bank_questions: {
+        Row: {
+          correct_answer: number | null
+          correct_answer_data: Json | null
+          created_at: string
+          created_by: string
+          difficulty: string
+          grade_level: string | null
+          id: string
+          image_url: string | null
+          options: Json
+          point_weight: number
+          question_text: string
+          question_type: string
+          subject: string
+          tags: string[]
+          topic: string | null
+          updated_at: string
+        }
+        Insert: {
+          correct_answer?: number | null
+          correct_answer_data?: Json | null
+          created_at?: string
+          created_by: string
+          difficulty?: string
+          grade_level?: string | null
+          id?: string
+          image_url?: string | null
+          options?: Json
+          point_weight?: number
+          question_text: string
+          question_type?: string
+          subject: string
+          tags?: string[]
+          topic?: string | null
+          updated_at?: string
+        }
+        Update: {
+          correct_answer?: number | null
+          correct_answer_data?: Json | null
+          created_at?: string
+          created_by?: string
+          difficulty?: string
+          grade_level?: string | null
+          id?: string
+          image_url?: string | null
+          options?: Json
+          point_weight?: number
+          question_text?: string
+          question_type?: string
+          subject?: string
+          tags?: string[]
+          topic?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       classes: {
         Row: {
           created_at: string
@@ -109,6 +166,8 @@ export type Database = {
       exam_sessions: {
         Row: {
           correct_answers: number | null
+          created_at: string
+          created_by: string | null
           essay_score: number | null
           exam_id: string
           finished_at: string | null
@@ -117,9 +176,12 @@ export type Database = {
           started_at: string
           student_id: string
           total_questions: number | null
+          updated_at: string
         }
         Insert: {
           correct_answers?: number | null
+          created_at?: string
+          created_by?: string | null
           essay_score?: number | null
           exam_id: string
           finished_at?: string | null
@@ -128,9 +190,12 @@ export type Database = {
           started_at?: string
           student_id: string
           total_questions?: number | null
+          updated_at?: string
         }
         Update: {
           correct_answers?: number | null
+          created_at?: string
+          created_by?: string | null
           essay_score?: number | null
           exam_id?: string
           finished_at?: string | null
@@ -139,6 +204,7 @@ export type Database = {
           started_at?: string
           student_id?: string
           total_questions?: number | null
+          updated_at?: string
         }
         Relationships: [
           {
@@ -262,6 +328,7 @@ export type Database = {
           correct_answer: number
           correct_answer_data: Json | null
           created_at: string
+          created_by: string | null
           exam_id: string
           id: string
           image_url: string | null
@@ -270,11 +337,13 @@ export type Database = {
           question_text: string
           question_type: string
           sort_order: number
+          updated_at: string
         }
         Insert: {
           correct_answer: number
           correct_answer_data?: Json | null
           created_at?: string
+          created_by?: string | null
           exam_id: string
           id?: string
           image_url?: string | null
@@ -283,11 +352,13 @@ export type Database = {
           question_text: string
           question_type?: string
           sort_order?: number
+          updated_at?: string
         }
         Update: {
           correct_answer?: number
           correct_answer_data?: Json | null
           created_at?: string
+          created_by?: string | null
           exam_id?: string
           id?: string
           image_url?: string | null
@@ -296,6 +367,7 @@ export type Database = {
           question_text?: string
           question_type?: string
           sort_order?: number
+          updated_at?: string
         }
         Relationships: [
           {
@@ -517,6 +589,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_student: { Args: { _user_id: string }; Returns: boolean }
+      owns_exam: { Args: { _exam_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "student" | "teacher"
