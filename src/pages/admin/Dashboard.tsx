@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FileText, Users, CheckCircle2, Clock, ShieldAlert, AlertTriangle, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 import AdminLayout from "@/components/admin/AdminLayout";
 import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import { Badge } from "@/components/ui/badge";
