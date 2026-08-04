@@ -1,33 +1,38 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import AppFooter from "@/components/AppFooter";
 import logoMadrasah from "@/assets/logo-madrasah.png";
+import { can, ROLE_LABELS, type Permission } from "@/lib/permissions";
 
-const navItems = [
-  { path: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/admin/monitor", label: "Monitor", icon: Eye },
-  { path: "/admin/sync", label: "Status Sync", icon: Cloud },
-  { path: "/admin/exams", label: "Kelola Ujian", icon: FileText },
-  { path: "/admin/results", label: "Hasil Siswa", icon: Users },
-  { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus },
-  { path: "/admin/violations", label: "Pelanggaran", icon: ShieldAlert },
-  { path: "/admin/anti-cheat-test", label: "Uji Anti-Cheat", icon: FlaskConical },
-  { path: "/admin/profile", label: "Profil Guru", icon: UserCog },
-  { path: "/admin/settings", label: "Pengaturan", icon: Settings },
+const navItems: { path: string; label: string; icon: typeof LayoutDashboard; permission: Permission }[] = [
+  { path: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard" },
+  { path: "/admin/monitor", label: "Monitor", icon: Eye, permission: "monitor" },
+  { path: "/admin/sync", label: "Status Sync", icon: Cloud, permission: "sync" },
+  { path: "/admin/exams", label: "Kelola Ujian", icon: FileText, permission: "exams" },
+  { path: "/admin/results", label: "Hasil Siswa", icon: Users, permission: "results" },
+  { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus, permission: "students" },
+  { path: "/admin/teachers", label: "Kelola Guru", icon: GraduationCap, permission: "teachers" },
+  { path: "/admin/violations", label: "Pelanggaran", icon: ShieldAlert, permission: "violations" },
+  { path: "/admin/anti-cheat-test", label: "Uji Anti-Cheat", icon: FlaskConical, permission: "anticheat_test" },
+  { path: "/admin/profile", label: "Profil Guru", icon: UserCog, permission: "profile" },
+  { path: "/admin/settings", label: "Pengaturan", icon: Settings, permission: "settings" },
 ];
 
 const AdminLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile, signOut } = useAuth();
+  const { profile, role, signOut } = useAuth();
   const { settings } = useAppSettings();
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
+
+  const visibleItems = navItems.filter((item) => can(role, item.permission));
 
   const handleLogout = async () => {
     await signOut();
@@ -42,7 +47,14 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
             <img src={settings.school_logo_url || logoMadrasah} alt="Logo" className="h-9 w-9 object-contain" />
             <div>
               <h1 className="text-base font-bold text-white">{settings.school_name}</h1>
-              <p className="text-xs text-white/70">{profile?.full_name || "Guru"}</p>
+              <p className="flex items-center gap-2 text-xs text-white/70">
+                {profile?.full_name || "Guru"}
+                {role && (
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-medium">
+                    {ROLE_LABELS[role]}
+                  </Badge>
+                )}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -61,7 +73,7 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
           <Menu className="h-4 w-4" /> Geser menu ke samping
         </div>
         <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6">
-          {navItems.map(({ path, label, icon: Icon }) => (
+          {visibleItems.map(({ path, label, icon: Icon }) => (
             <button
               key={path}
               onClick={() => navigate(path)}

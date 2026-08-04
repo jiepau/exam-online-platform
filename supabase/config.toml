@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.submit-exam]
 verify_jwt = false
+
+[functions.manage-teacher]
+verify_jwt = false
