@@ -119,15 +119,16 @@ const Index = () => {
           <div className="flex items-center gap-2">
             {user ? (
               <>
-                {role === "admin" && (
+                {isStaff(role) && (
                   <Button
                     variant="ghost"
                     onClick={() => navigate("/admin")}
                     className="text-white hover:bg-white/20 text-sm"
                   >
-                    Dashboard Admin
+                    {role === "admin" ? "Dashboard Admin" : "Dashboard Guru"}
                   </Button>
                 )}
+
                 <Button
                   variant="ghost"
                   onClick={signOut}
