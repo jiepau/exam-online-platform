@@ -1,13 +1,19 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import type { AppRole } from "@/lib/permissions";
 
-type AppRole = "admin" | "student";
+interface StaffProfile {
+  full_name: string;
+  nip?: string | null;
+  nuptk?: string | null;
+  subject?: string | null;
+}
 
 interface AuthContextType {
   user: User | null;
   role: AppRole | null;
-  profile: { full_name: string } | null;
+  profile: StaffProfile | null;
   loading: boolean;
   signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -19,17 +25,17 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<{ full_name: string } | null>(null);
+  const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string) => {
     const [roleRes, profileRes] = await Promise.all([
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
-      supabase.from("profiles").select("full_name").eq("user_id", userId).maybeSingle(),
+      supabase.from("profiles").select("full_name, nip, nuptk, subject").eq("user_id", userId).maybeSingle(),
     ]);
 
     setRole((roleRes.data?.role as AppRole) ?? null);
-    setProfile(profileRes.data ?? null);
+    setProfile((profileRes.data as StaffProfile) ?? null);
   };
 
   const loadSession = async () => {

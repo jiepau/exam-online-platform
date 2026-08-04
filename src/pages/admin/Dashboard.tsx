@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FileText, Users, CheckCircle2, Clock, ShieldAlert, AlertTriangle, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 import AdminLayout from "@/components/admin/AdminLayout";
 import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import { Badge } from "@/components/ui/badge";
@@ -15,26 +17,44 @@ interface ViolationLog {
 }
 
 const Dashboard = () => {
+  const { user, role } = useAuth();
+  const isTeacher = role === "teacher";
   const [stats, setStats] = useState({ exams: 0, activeExams: 0, sessions: 0 });
   const [recentViolations, setRecentViolations] = useState<ViolationLog[]>([]);
   const [newAlert, setNewAlert] = useState(false);
 
   useEffect(() => {
+    if (!user) return;
     const fetchStats = async () => {
-      const [examsRes, activeRes, sessionsRes] = await Promise.all([
-        supabase.from("exams").select("id", { count: "exact", head: true }),
-        supabase.from("exams").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("exam_sessions").select("id", { count: "exact", head: true }),
-      ]);
+      // Guru: hanya ujian miliknya sendiri
+      let examQuery = supabase.from("exams").select("id");
+      if (isTeacher) examQuery = examQuery.eq("created_by", user.id);
+      const { data: myExams } = await examQuery;
+      const examIds = (myExams || []).map((e) => e.id);
+
+      let activeQuery = supabase.from("exams").select("id", { count: "exact", head: true }).eq("is_active", true);
+      if (isTeacher) activeQuery = activeQuery.eq("created_by", user.id);
+
+      let sessionQuery = supabase.from("exam_sessions").select("id", { count: "exact", head: true });
+      if (isTeacher) {
+        if (examIds.length === 0) {
+          setStats({ exams: 0, activeExams: 0, sessions: 0 });
+          return;
+        }
+        sessionQuery = sessionQuery.in("exam_id", examIds);
+      }
+
+      const [activeRes, sessionsRes] = await Promise.all([activeQuery, sessionQuery]);
       setStats({
-        exams: examsRes.count || 0,
+        exams: examIds.length,
         activeExams: activeRes.count || 0,
         sessions: sessionsRes.count || 0,
       });
     };
     fetchStats();
 
-    // Fetch recent violations
+
+    // Fetch recent violations (RLS: guru hanya melihat pelanggaran pada ujiannya)
     const fetchViolations = async () => {
       const { data } = await supabase
         .from("violation_logs" as any)
@@ -51,8 +71,17 @@ const Dashboard = () => {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "violation_logs" },
-        (payload) => {
+        async (payload) => {
           const newViolation = payload.new as ViolationLog;
+          if (isTeacher) {
+            const { data: owned } = await supabase
+              .from("exams")
+              .select("id")
+              .eq("id", newViolation.exam_id)
+              .eq("created_by", user.id)
+              .maybeSingle();
+            if (!owned) return;
+          }
           setRecentViolations((prev) => [newViolation, ...prev].slice(0, 20));
           setNewAlert(true);
           // Play alert sound on admin side
@@ -77,12 +106,12 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [user, isTeacher]);
 
   const cards = [
-    { label: "Total Ujian", value: stats.exams, icon: FileText, color: "text-primary" },
+    { label: isTeacher ? "Ujian Saya" : "Total Ujian", value: stats.exams, icon: FileText, color: "text-primary" },
     { label: "Ujian Aktif", value: stats.activeExams, icon: Clock, color: "text-warning" },
-    { label: "Sesi Ujian", value: stats.sessions, icon: CheckCircle2, color: "text-success" },
+    { label: isTeacher ? "Sesi Ujian Saya" : "Sesi Ujian", value: stats.sessions, icon: CheckCircle2, color: "text-success" },
   ];
 
   const formatTime = (dateStr: string) => {
@@ -93,8 +122,16 @@ const Dashboard = () => {
   return (
     <AdminLayout>
       <WhatsNewDialog />
-      <h2 className="text-2xl font-bold text-foreground mb-6">Dashboard</h2>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-foreground">{isTeacher ? "Dashboard Guru" : "Dashboard"}</h2>
+        <p className="text-sm text-muted-foreground">
+          {isTeacher
+            ? "Statistik hanya menampilkan ujian dan hasil siswa dari ujian yang Anda buat."
+            : "Statistik seluruh ujian dan sesi pada aplikasi."}
+        </p>
+      </div>
       <div className="grid gap-4 sm:grid-cols-3 mb-8">
+
         {cards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="rounded-xl bg-card p-6 shadow-sm border border-border">
             <div className="flex items-center justify-between">
