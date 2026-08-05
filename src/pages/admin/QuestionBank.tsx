@@ -259,7 +259,7 @@ const QuestionBank = () => {
     if (isShort && !form.short_answer.trim()) return toast.error("Kunci jawaban isian wajib diisi");
     if (isComplex && form.complex_answers.length === 0) return toast.error("Pilih minimal satu kunci jawaban");
 
-    let correctAnswerData: Record<string, unknown> | null = null;
+    let correctAnswerData: Json | null = null;
     if (isShort) correctAnswerData = { text: form.short_answer.trim() };
     else if (isComplex) correctAnswerData = { answers: form.complex_answers.slice().sort((a, b) => a - b) };
 
@@ -270,7 +270,7 @@ const QuestionBank = () => {
       difficulty: form.difficulty,
       question_type: form.question_type,
       question_text: form.question_text.trim(),
-      options,
+      options: options as unknown as Json,
       correct_answer: isShort || isComplex ? null : form.correct_answer,
       correct_answer_data: correctAnswerData,
       point_weight: Number(form.point_weight) || 1,
@@ -280,7 +280,8 @@ const QuestionBank = () => {
     setSaving(true);
     const { error } = form.id
       ? await supabase.from("bank_questions").update(payload).eq("id", form.id)
-      : await supabase.from("bank_questions").insert({ ...payload, created_by: user.id });
+      : await supabase.from("bank_questions").insert([{ ...payload, created_by: user.id }]);
+
     setSaving(false);
 
     if (error) return toast.error("Gagal menyimpan: " + error.message);
