@@ -3,6 +3,8 @@ import {
   Library, Plus, Pencil, Trash2, Search, RotateCcw, User, Star, TrendingUp, Archive, Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
+
 import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/admin/AdminLayout";
 import StatCard from "@/components/admin/StatCard";
