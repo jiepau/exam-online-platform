@@ -15,6 +15,8 @@ import ExamPage from "./pages/ExamPage";
 import ExamResult from "./pages/ExamResult";
 import Dashboard from "./pages/admin/Dashboard";
 import ExamManager from "./pages/admin/ExamManager";
+import QuestionBank from "./pages/admin/QuestionBank";
+
 import StudentResults from "./pages/admin/StudentResults";
 import StudentManager from "./pages/admin/StudentManager";
 import TeacherManager from "./pages/admin/TeacherManager";
