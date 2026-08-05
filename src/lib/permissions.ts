@@ -5,6 +5,7 @@ export type Permission =
   | "monitor"
   | "sync"
   | "exams"
+  | "bank"
   | "results"
   | "students"
   | "teachers"
@@ -19,6 +20,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "monitor",
     "sync",
     "exams",
+    "bank",
     "results",
     "students",
     "teachers",
@@ -28,9 +30,10 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "settings",
   ],
   // Guru: hanya data ujian miliknya sendiri
-  teacher: ["dashboard", "monitor", "exams", "results", "violations", "anticheat_test", "profile"],
+  teacher: ["dashboard", "monitor", "exams", "bank", "results", "violations", "anticheat_test", "profile"],
   student: [],
 };
+
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   admin: "Administrator",

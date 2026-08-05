@@ -15,6 +15,8 @@ import ExamPage from "./pages/ExamPage";
 import ExamResult from "./pages/ExamResult";
 import Dashboard from "./pages/admin/Dashboard";
 import ExamManager from "./pages/admin/ExamManager";
+import QuestionBank from "./pages/admin/QuestionBank";
+
 import StudentResults from "./pages/admin/StudentResults";
 import StudentManager from "./pages/admin/StudentManager";
 import TeacherManager from "./pages/admin/TeacherManager";
@@ -64,6 +66,8 @@ const App = () => {
               <Route path="/admin" element={<StaffRoute permission="dashboard"><Dashboard /></StaffRoute>} />
               <Route path="/admin/monitor" element={<StaffRoute permission="monitor"><LiveMonitor /></StaffRoute>} />
               <Route path="/admin/exams" element={<StaffRoute permission="exams"><ExamManager /></StaffRoute>} />
+              <Route path="/admin/bank" element={<StaffRoute permission="bank"><QuestionBank /></StaffRoute>} />
+
               <Route path="/admin/results" element={<StaffRoute permission="results"><StudentResults /></StaffRoute>} />
               <Route path="/admin/results/:sessionId" element={<StaffRoute permission="results"><StudentResultDetail /></StaffRoute>} />
               <Route path="/admin/students" element={<StaffRoute permission="students"><StudentManager /></StaffRoute>} />
