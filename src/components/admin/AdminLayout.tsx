@@ -16,6 +16,8 @@ const navItems: { path: string; label: string; icon: typeof LayoutDashboard; per
   { path: "/admin/monitor", label: "Monitor", icon: Eye, permission: "monitor" },
   { path: "/admin/sync", label: "Status Sync", icon: Cloud, permission: "sync" },
   { path: "/admin/exams", label: "Kelola Ujian", icon: FileText, permission: "exams" },
+  { path: "/admin/bank", label: "Bank Soal", icon: Library, permission: "bank" },
+
   { path: "/admin/results", label: "Hasil Siswa", icon: Users, permission: "results" },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus, permission: "students" },
   { path: "/admin/teachers", label: "Kelola Guru", icon: GraduationCap, permission: "teachers" },
