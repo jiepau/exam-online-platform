@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap, Library } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
