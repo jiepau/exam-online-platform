@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap, Library } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap, Library, School } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ const navItems: { path: string; label: string; icon: typeof LayoutDashboard; per
 
   { path: "/admin/results", label: "Hasil Siswa", icon: Users, permission: "results" },
   { path: "/admin/students", label: "Kelola Siswa", icon: UserPlus, permission: "students" },
+  { path: "/admin/classes", label: "Manajemen Kelas", icon: School, permission: "classes" },
   { path: "/admin/teachers", label: "Kelola Guru", icon: GraduationCap, permission: "teachers" },
   { path: "/admin/violations", label: "Pelanggaran", icon: ShieldAlert, permission: "violations" },
   { path: "/admin/anti-cheat-test", label: "Uji Anti-Cheat", icon: FlaskConical, permission: "anticheat_test" },
