@@ -19,6 +19,7 @@ import QuestionBank from "./pages/admin/QuestionBank";
 
 import StudentResults from "./pages/admin/StudentResults";
 import StudentManager from "./pages/admin/StudentManager";
+import ClassManager from "./pages/admin/ClassManager";
 import TeacherManager from "./pages/admin/TeacherManager";
 import ProfileEdit from "./pages/admin/ProfileEdit";
 import StudentResultDetail from "./pages/admin/StudentResultDetail";
@@ -71,6 +72,7 @@ const App = () => {
               <Route path="/admin/results" element={<StaffRoute permission="results"><StudentResults /></StaffRoute>} />
               <Route path="/admin/results/:sessionId" element={<StaffRoute permission="results"><StudentResultDetail /></StaffRoute>} />
               <Route path="/admin/students" element={<StaffRoute permission="students"><StudentManager /></StaffRoute>} />
+              <Route path="/admin/classes" element={<StaffRoute permission="classes"><ClassManager /></StaffRoute>} />
               <Route path="/admin/teachers" element={<StaffRoute permission="teachers"><TeacherManager /></StaffRoute>} />
               <Route path="/admin/profile" element={<StaffRoute permission="profile"><ProfileEdit /></StaffRoute>} />
               <Route path="/admin/settings" element={<StaffRoute permission="settings"><Settings /></StaffRoute>} />
