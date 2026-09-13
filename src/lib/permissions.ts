@@ -8,6 +8,7 @@ export type Permission =
   | "bank"
   | "results"
   | "students"
+  | "classes"
   | "teachers"
   | "violations"
   | "anticheat_test"
@@ -23,6 +24,7 @@ const ROLE_PERMISSIONS: Record<AppRole, Permission[]> = {
     "bank",
     "results",
     "students",
+    "classes",
     "teachers",
     "violations",
     "anticheat_test",
