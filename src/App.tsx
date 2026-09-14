@@ -60,6 +60,7 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <ThemeProvider>
+            <PWAUpdatePrompt />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<AuthPage />} />
