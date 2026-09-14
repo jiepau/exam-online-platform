@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import SplashScreen from "@/components/SplashScreen";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import PWAUpdatePrompt from "@/components/PWAUpdatePrompt";
 import { can, isStaff, type Permission } from "@/lib/permissions";
 import Index from "./pages/Index";
 import AuthPage from "./pages/AuthPage";
