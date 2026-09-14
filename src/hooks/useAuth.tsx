@@ -15,6 +15,7 @@ interface AuthContextType {
   role: AppRole | null;
   profile: StaffProfile | null;
   loading: boolean;
+  roleError: string | null;
   signUp: (email: string, password: string, fullName: string, role: AppRole) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -27,52 +28,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<AppRole | null>(null);
   const [profile, setProfile] = useState<StaffProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roleError, setRoleError] = useState<string | null>(null);
+
+  // Fetch role with a single retry on transient failure.
+  const fetchRole = async (userId: string): Promise<{ role: AppRole | null; error: string | null }> => {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const { data, error } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!error) return { role: (data?.role as AppRole) ?? null, error: null };
+      // Retry once after a short delay for transient errors
+      await new Promise((r) => setTimeout(r, 800));
+    }
+    return { role: null, error: "Gagal memuat hak akses. Silakan muat ulang halaman." };
+  };
 
   const fetchUserData = async (userId: string) => {
     const [roleRes, profileRes] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+      fetchRole(userId),
       supabase.from("profiles").select("full_name, nip, nuptk, subject").eq("user_id", userId).maybeSingle(),
     ]);
 
-    setRole((roleRes.data?.role as AppRole) ?? null);
+    setRole(roleRes.role);
+    setRoleError(roleRes.error);
     setProfile((profileRes.data as StaffProfile) ?? null);
   };
 
-  const loadSession = async () => {
-    setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    const currentUser = session?.user ?? null;
-
-    setUser(currentUser);
-    if (currentUser) {
-      await fetchUserData(currentUser.id);
-    } else {
-      setRole(null);
-      setProfile(null);
-    }
-    setLoading(false);
-  };
-
   useEffect(() => {
+    let mounted = true;
+
+    // onAuthStateChange fires INITIAL_SESSION on subscribe — it is the single
+    // source of truth for session init, so no separate loadSession() call.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
+
       if (currentUser) {
         setLoading(true);
+        setRoleError(null);
+        // Defer to avoid Supabase auth callback deadlocks
         setTimeout(async () => {
+          if (!mounted) return;
           await fetchUserData(currentUser.id);
-          setLoading(false);
+          if (mounted) setLoading(false);
         }, 0);
       } else {
         setRole(null);
         setProfile(null);
+        setRoleError(null);
         setLoading(false);
       }
     });
 
-    loadSession();
-
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: AppRole) => {
@@ -109,10 +123,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
     setRole(null);
     setProfile(null);
+    setRoleError(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, profile, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, role, profile, loading, roleError, signUp, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
