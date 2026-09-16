@@ -195,11 +195,19 @@ const StudentResults = () => {
     (query: any, ctx: { studentIds: string[] | null; orExpr: string | null }) => {
       let q = query;
       if (ctx.studentIds) q = q.in("student_id", ctx.studentIds);
+      if (filterExam !== "all") q = q.eq("exam_id", filterExam);
       if (filterSubject !== "all") q = q.eq("exams.subject", filterSubject);
+      if (filterStatus === "ongoing") q = q.is("finished_at", null);
+      if (filterStatus === "finished") q = q.not("finished_at", "is", null);
+      if (filterStatus === "need_essay") {
+        q = q.not("finished_at", "is", null).is("essay_score", null).eq("exams.has_essay", true);
+      }
+      if (dateFrom) q = q.gte("started_at", wibStart(dateFrom));
+      if (dateTo) q = q.lte("started_at", wibEnd(dateTo));
       if (ctx.orExpr) q = q.or(ctx.orExpr);
       return q;
     },
-    [filterSubject]
+    [filterSubject, filterExam, filterStatus, dateFrom, dateTo]
   );
 
   const mapSessions = useCallback(async (sessions: any[]): Promise<SessionResult[]> => {
