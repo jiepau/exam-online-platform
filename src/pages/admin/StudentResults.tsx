@@ -36,6 +36,16 @@ interface ClassOption {
   name: string;
 }
 
+interface ExamOption {
+  id: string;
+  title: string;
+  subject: string;
+}
+
+// batas hari WIB (UTC+7) supaya hasil di tanggal batas tidak hilang
+const wibStart = (d: string) => `${d}T00:00:00+07:00`;
+const wibEnd = (d: string) => `${d}T23:59:59.999+07:00`;
+
 // Kolom yang benar-benar dipakai UI (hindari select("*"))
 const SESSION_COLUMNS =
   "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, exams!inner(title, subject, has_essay)";
