@@ -383,10 +383,11 @@ const StudentResults = () => {
       const finishedResults = await fetchAllFiltered(true);
       if (!finishedResults.length) { toast.error("Tidak ada hasil selesai untuk dicetak"); return; }
       const uniqueExamIds = [...new Set(finishedResults.map((r) => r.exam_id).filter(Boolean))] as string[];
-      const { data: questions } = await supabase
+      const { data: questions, error: qErr } = await supabase
         .from("questions")
         .select("exam_id, point_weight")
         .in("exam_id", uniqueExamIds);
+      if (qErr) throw new Error("Gagal memuat bobot soal untuk cetak. Coba lagi.");
       const weightMap = new Map<string, number>();
       (questions || []).forEach((q: any) => {
         weightMap.set(q.exam_id, (weightMap.get(q.exam_id) || 0) + (q.point_weight || 1));
