@@ -1,5 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
-import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw, Printer } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Download, Users, BookOpen, TrendingUp, CheckCircle, Trash2, Eye, AlertTriangle, RefreshCw, Printer, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { exportToExcel } from "@/lib/exportExcel";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ interface SessionResult {
   nisn?: string;
   exam_number?: string;
   student_id?: string;
+  exam_id?: string;
   essay_score?: number | null;
   exam_has_essay?: boolean;
 }
@@ -35,10 +36,14 @@ interface ClassOption {
   name: string;
 }
 
+// Kolom yang benar-benar dipakai UI (hindari select("*"))
+const SESSION_COLUMNS =
+  "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, exams!inner(title, subject, has_essay)";
+
+const MAX_BULK_ROWS = 5000;
+
 const calcScore = (r: SessionResult) =>
-  r.finished_at && r.total_questions
-    ? (r.correct_answers || 0)
-    : null;
+  r.finished_at && r.total_questions ? (r.correct_answers || 0) : null;
 
 const calcPercentage = (r: SessionResult) =>
   r.finished_at && r.total_questions
@@ -48,15 +53,41 @@ const calcPercentage = (r: SessionResult) =>
 const StudentResults = () => {
   const navigate = useNavigate();
   const [results, setResults] = useState<SessionResult[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // session id
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
   const [batchPrintOpen, setBatchPrintOpen] = useState(false);
   const [batchPrintData, setBatchPrintData] = useState<ResultData[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [statsRows, setStatsRows] = useState<
+    { finished_at: string | null; correct_answers: number | null; total_questions: number | null; student_id: string; subject: string }[]
+  >([]);
+
+  const classMapRef = useRef<Map<string, string>>(new Map());
+  const studentClassRef = useRef<Map<string, string | null>>(new Map());
+
+  // debounce pencarian 300ms
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  // reset ke halaman 1 saat filter/pencarian/page size berubah
+  useEffect(() => {
+    setPage(1);
+  }, [filterClass, filterSubject, debouncedSearch, pageSize]);
+
   const handleExportExcel = (data: SessionResult[], label: string) => {
     exportToExcel({
       filename: `hasil-ujian-${label}.xlsx`,
@@ -85,113 +116,296 @@ const StudentResults = () => {
     });
   };
 
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchData = async () => {
-    const { data: classData } = await supabase.from("classes").select("id, name").order("sort_order");
+  // ---- master data (kelas, mapel, peta kelas siswa) ----
+  const loadMasterData = useCallback(async () => {
+    const [{ data: classData }, { data: examData }, { data: profileData }] = await Promise.all([
+      supabase.from("classes").select("id, name").order("sort_order"),
+      supabase.from("exams").select("subject"),
+      supabase.from("profiles").select("user_id, class_id"),
+    ]);
     setClasses(classData || []);
+    classMapRef.current = new Map((classData || []).map((c) => [c.id, c.name]));
+    studentClassRef.current = new Map((profileData || []).map((p: any) => [p.user_id, p.class_id ?? null]));
+    setSubjects([...new Set((examData || []).map((e: any) => e.subject).filter(Boolean))].sort());
+  }, []);
 
-    const { data: sessions } = await supabase
-      .from("exam_sessions")
-      .select("*, exams(title, subject, has_essay)")
-      .order("started_at", { ascending: false });
-
-    if (sessions) {
-      const studentIds = [...new Set(sessions.map((s: any) => s.student_id))];
-      const { data: profiles } = await supabase
-        .from("profiles").select("user_id, full_name, class_id, nisn, exam_number").in("user_id", studentIds);
-
-      const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
-      const classMap = new Map((classData || []).map((c) => [c.id, c.name]));
-
-      const mapped = sessions.map((s: any) => {
-        const profile = profileMap.get(s.student_id);
-        return {
-          id: s.id, score: s.score, total_questions: s.total_questions,
-          correct_answers: s.correct_answers, started_at: s.started_at,
-          finished_at: s.finished_at,
-          exam_title: s.exams?.title || "Unknown",
-          exam_subject: s.exams?.subject || "Unknown",
-          student_name: profile?.full_name || "Unknown",
-          class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
-          class_id: profile?.class_id || null,
-          nisn: profile?.nisn || undefined,
-          exam_number: profile?.exam_number || undefined,
-          student_id: s.student_id,
-          essay_score: s.essay_score ?? null,
-          exam_has_essay: s.exams?.has_essay ?? false,
-        };
-      });
-
-      setResults(mapped);
-      setSubjects([...new Set(mapped.map((r) => r.exam_subject))].sort());
+  // ---- resolusi filter jadi kondisi query database ----
+  const resolveFilters = useCallback(async () => {
+    let studentIds: string[] | null = null;
+    if (filterClass !== "all") {
+      const { data } = await supabase.from("profiles").select("user_id").eq("class_id", filterClass);
+      studentIds = (data || []).map((p: any) => p.user_id);
     }
-  };
+
+    let orExpr: string | null = null;
+    const q = debouncedSearch.trim();
+    if (q) {
+      const [{ data: profs }, { data: exs }] = await Promise.all([
+        supabase.from("profiles").select("user_id").ilike("full_name", `%${q}%`).limit(1000),
+        supabase.from("exams").select("id").ilike("title", `%${q}%`).limit(1000),
+      ]);
+      let matchedStudents = (profs || []).map((p: any) => p.user_id);
+      if (studentIds) {
+        const allowed = new Set(studentIds);
+        matchedStudents = matchedStudents.filter((id: string) => allowed.has(id));
+      }
+      const examIds = (exs || []).map((e: any) => e.id);
+      const parts: string[] = [];
+      if (matchedStudents.length) parts.push(`student_id.in.(${matchedStudents.join(",")})`);
+      if (examIds.length) parts.push(`exam_id.in.(${examIds.join(",")})`);
+      if (!parts.length) return { studentIds, orExpr: null, empty: true };
+      orExpr = parts.join(",");
+    }
+
+    return { studentIds, orExpr, empty: studentIds !== null && studentIds.length === 0 };
+  }, [filterClass, debouncedSearch]);
+
+  const applyFilters = useCallback(
+    (query: any, ctx: { studentIds: string[] | null; orExpr: string | null }) => {
+      let q = query;
+      if (ctx.studentIds) q = q.in("student_id", ctx.studentIds);
+      if (filterSubject !== "all") q = q.eq("exams.subject", filterSubject);
+      if (ctx.orExpr) q = q.or(ctx.orExpr);
+      return q;
+    },
+    [filterSubject]
+  );
+
+  const mapSessions = useCallback(async (sessions: any[]): Promise<SessionResult[]> => {
+    if (!sessions.length) return [];
+    const studentIds = [...new Set(sessions.map((s) => s.student_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, class_id, nisn, exam_number")
+      .in("user_id", studentIds);
+    const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
+    const classMap = classMapRef.current;
+
+    return sessions.map((s) => {
+      const profile: any = profileMap.get(s.student_id);
+      return {
+        id: s.id,
+        score: s.score,
+        total_questions: s.total_questions,
+        correct_answers: s.correct_answers,
+        started_at: s.started_at,
+        finished_at: s.finished_at,
+        exam_title: s.exams?.title || "Unknown",
+        exam_subject: s.exams?.subject || "Unknown",
+        student_name: profile?.full_name || "Unknown",
+        class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
+        class_id: profile?.class_id || null,
+        nisn: profile?.nisn || undefined,
+        exam_number: profile?.exam_number || undefined,
+        student_id: s.student_id,
+        exam_id: s.exam_id,
+        essay_score: s.essay_score ?? null,
+        exam_has_essay: s.exams?.has_essay ?? false,
+      };
+    });
+  }, []);
+
+  // ---- ambil satu halaman + statistik sesuai filter ----
+  const fetchPage = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const ctx = await resolveFilters();
+      if (ctx.empty) {
+        setResults([]);
+        setTotalCount(0);
+        setStatsRows([]);
+        return;
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      const pageQuery = applyFilters(
+        supabase.from("exam_sessions").select(SESSION_COLUMNS, { count: "exact" }),
+        ctx
+      )
+        .order("started_at", { ascending: false })
+        .range(from, to);
+
+      // statistik: payload ringan (tanpa join profil), mengikuti filter aktif
+      const statsQuery = applyFilters(
+        supabase
+          .from("exam_sessions")
+          .select("finished_at, correct_answers, total_questions, student_id, exams!inner(subject)"),
+        ctx
+      ).range(0, MAX_BULK_ROWS - 1);
+
+      const [{ data: sessions, count, error }, { data: stats, error: statsError }] = await Promise.all([
+        pageQuery,
+        statsQuery,
+      ]);
+
+      if (error) throw error;
+      if (statsError) throw statsError;
+
+      setTotalCount(count ?? 0);
+      setResults(await mapSessions(sessions || []));
+      setStatsRows(
+        (stats || []).map((s: any) => ({
+          finished_at: s.finished_at,
+          correct_answers: s.correct_answers,
+          total_questions: s.total_questions,
+          student_id: s.student_id,
+          subject: s.exams?.subject || "Unknown",
+        }))
+      );
+    } catch (e: any) {
+      setLoadError(e?.message || "Gagal memuat hasil ujian.");
+    } finally {
+      setLoading(false);
+    }
+  }, [applyFilters, mapSessions, page, pageSize, resolveFilters]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    loadMasterData();
+  }, [loadMasterData]);
+
+  useEffect(() => {
+    fetchPage();
+  }, [fetchPage]);
+
+  // ---- seluruh data sesuai filter (untuk export / cetak / hapus massal) ----
+  const fetchAllFiltered = useCallback(
+    async (onlyFinished = false): Promise<SessionResult[]> => {
+      const ctx = await resolveFilters();
+      if (ctx.empty) return [];
+      let q = applyFilters(supabase.from("exam_sessions").select(SESSION_COLUMNS), ctx);
+      if (onlyFinished) q = q.not("finished_at", "is", null);
+      const { data, error } = await q.order("started_at", { ascending: false }).range(0, MAX_BULK_ROWS - 1);
+      if (error) throw error;
+      return mapSessions(data || []);
+    },
+    [applyFilters, mapSessions, resolveFilters]
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await loadMasterData();
+    await fetchPage();
     setRefreshing(false);
     toast.success("Data berhasil diperbarui");
   };
 
   const handleDeleteOne = async (sessionId: string) => {
-    // Delete answers first, then session
     await supabase.from("student_answers").delete().eq("session_id", sessionId);
     const { error } = await supabase.from("exam_sessions").delete().eq("id", sessionId);
     if (error) { toast.error("Gagal menghapus hasil"); return; }
     toast.success("Hasil ujian berhasil dihapus");
-    setResults((prev) => prev.filter((r) => r.id !== sessionId));
     setDeleteTarget(null);
+    await fetchPage();
   };
 
   const handleDeleteFiltered = async () => {
-    const ids = filtered.map((r) => r.id);
-    for (const id of ids) {
-      await supabase.from("student_answers").delete().eq("session_id", id);
+    setBusy(true);
+    try {
+      const all = await fetchAllFiltered();
+      const ids = all.map((r) => r.id);
+      for (const id of ids) {
+        await supabase.from("student_answers").delete().eq("session_id", id);
+      }
+      const { error } = await supabase.from("exam_sessions").delete().in("id", ids);
+      if (error) { toast.error("Gagal menghapus hasil"); return; }
+      toast.success(`${ids.length} hasil ujian berhasil dihapus`);
+      setDeleteAllConfirm(false);
+      setPage(1);
+      await fetchPage();
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal menghapus hasil");
+    } finally {
+      setBusy(false);
     }
-    const { error } = await supabase.from("exam_sessions").delete().in("id", ids);
-    if (error) { toast.error("Gagal menghapus hasil"); return; }
-    toast.success(`${ids.length} hasil ujian berhasil dihapus`);
-    setResults((prev) => prev.filter((r) => !ids.includes(r.id)));
-    setDeleteAllConfirm(false);
   };
 
-  const filtered = results.filter((r) => {
-    if (filterClass !== "all" && r.class_id !== filterClass) return false;
-    if (filterSubject !== "all" && r.exam_subject !== filterSubject) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!r.student_name.toLowerCase().includes(q) && !r.exam_title.toLowerCase().includes(q)) return false;
+  const handleExportAll = async () => {
+    setBusy(true);
+    try {
+      const all = await fetchAllFiltered();
+      if (!all.length) { toast.error("Tidak ada data untuk diexport"); return; }
+      const label = filterClass !== "all"
+        ? classes.find((c) => c.id === filterClass)?.name || "kelas"
+        : filterSubject !== "all" ? filterSubject : "semua";
+      handleExportExcel(all, label);
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal export data");
+    } finally {
+      setBusy(false);
     }
-    return true;
-  });
+  };
 
-  // Summary stats computed from filtered finished results
-  const finishedFiltered = filtered.filter((r) => r.finished_at);
+  const handleBatchPrint = async () => {
+    setBusy(true);
+    try {
+      const finishedResults = await fetchAllFiltered(true);
+      if (!finishedResults.length) { toast.error("Tidak ada hasil selesai untuk dicetak"); return; }
+      const uniqueExamIds = [...new Set(finishedResults.map((r) => r.exam_id).filter(Boolean))] as string[];
+      const { data: questions } = await supabase
+        .from("questions")
+        .select("exam_id, point_weight")
+        .in("exam_id", uniqueExamIds);
+      const weightMap = new Map<string, number>();
+      (questions || []).forEach((q: any) => {
+        weightMap.set(q.exam_id, (weightMap.get(q.exam_id) || 0) + (q.point_weight || 1));
+      });
 
+      const printData: ResultData[] = finishedResults.map((r) => {
+        const maxScore = weightMap.get(r.exam_id || "") || r.total_questions || 0;
+        const pct = maxScore > 0 ? Math.round(((r.score ?? r.correct_answers ?? 0) / maxScore) * 100) : null;
+        return {
+          student_name: r.student_name,
+          class_name: r.class_name,
+          exam_title: r.exam_title,
+          exam_subject: r.exam_subject,
+          score: r.score,
+          correct_answers: r.correct_answers,
+          total_questions: r.total_questions,
+          started_at: r.started_at,
+          finished_at: r.finished_at,
+          maxScore,
+          percentage: pct,
+          nisn: r.nisn,
+          exam_number: r.exam_number,
+          essay_score: r.essay_score,
+        };
+      });
+      setBatchPrintData(printData);
+      setBatchPrintOpen(true);
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal menyiapkan cetak");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ---- statistik (seluruh hasil sesuai filter, bukan hanya halaman aktif) ----
+  const finishedStats = useMemo(
+    () => statsRows.filter((r) => r.finished_at && r.total_questions),
+    [statsRows]
+  );
+  const pctOf = (r: { correct_answers: number | null; total_questions: number | null }) =>
+    r.total_questions ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100) : 0;
+
+  const finishedCount = finishedStats.length;
   const avgScore = useMemo(() => {
-    if (!finishedFiltered.length) return null;
-    const total = finishedFiltered.reduce((sum, r) => sum + (calcPercentage(r) ?? 0), 0);
-    return Math.round(total / finishedFiltered.length);
-  }, [finishedFiltered]);
+    if (!finishedCount) return null;
+    return Math.round(finishedStats.reduce((sum, r) => sum + pctOf(r), 0) / finishedCount);
+  }, [finishedStats, finishedCount]);
+  const passCount = finishedStats.filter((r) => pctOf(r) >= 70).length;
+  const passRate = finishedCount ? Math.round((passCount / finishedCount) * 100) : null;
 
-  const passCount = finishedFiltered.filter((r) => (calcPercentage(r) ?? 0) >= 70).length;
-  const passRate = finishedFiltered.length ? Math.round((passCount / finishedFiltered.length) * 100) : null;
-
-  // Rekap per kelas (hanya jika tidak filter ke kelas tertentu)
   const byClass = useMemo(() => {
     if (filterClass !== "all") return [];
     const map = new Map<string, { name: string; scores: number[] }>();
-    finishedFiltered.forEach((r) => {
-      const key = r.class_id || "__none__";
-      if (!map.has(key)) map.set(key, { name: r.class_name, scores: [] });
-      const s = calcPercentage(r);
-      if (s !== null) map.get(key)!.scores.push(s);
+    finishedStats.forEach((r) => {
+      const classId = studentClassRef.current.get(r.student_id) || null;
+      const key = classId || "__none__";
+      if (!map.has(key)) map.set(key, { name: classId ? classMapRef.current.get(classId) || "-" : "-", scores: [] });
+      map.get(key)!.scores.push(pctOf(r));
     });
     return [...map.entries()]
       .map(([, v]) => ({
@@ -200,16 +414,14 @@ const StudentResults = () => {
         count: v.scores.length,
       }))
       .sort((a, b) => b.avg - a.avg);
-  }, [finishedFiltered, filterClass]);
+  }, [finishedStats, filterClass]);
 
-  // Rekap per mapel (hanya jika tidak filter ke mapel tertentu)
   const bySubject = useMemo(() => {
     if (filterSubject !== "all") return [];
     const map = new Map<string, number[]>();
-    finishedFiltered.forEach((r) => {
-      if (!map.has(r.exam_subject)) map.set(r.exam_subject, []);
-      const s = calcPercentage(r);
-      if (s !== null) map.get(r.exam_subject)!.push(s);
+    finishedStats.forEach((r) => {
+      if (!map.has(r.subject)) map.set(r.subject, []);
+      map.get(r.subject)!.push(pctOf(r));
     });
     return [...map.entries()]
       .map(([subject, scores]) => ({
@@ -218,105 +430,39 @@ const StudentResults = () => {
         count: scores.length,
       }))
       .sort((a, b) => b.avg - a.avg);
-  }, [finishedFiltered, filterSubject]);
+  }, [finishedStats, filterSubject]);
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, totalCount);
+
+  // jika halaman aktif tidak lagi punya data (mis. setelah hapus), turunkan halaman
+  useEffect(() => {
+    if (!loading && page > totalPages) setPage(totalPages);
+  }, [loading, page, totalPages]);
 
   return (
     <AdminLayout>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-bold text-foreground">Hasil Siswa</h2>
         <div className="flex gap-2">
-          <Button
-            variant="outline" size="sm" className="gap-2"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} /> Refresh
           </Button>
-          <Button
-            variant="outline" size="sm" className="gap-2"
-            disabled={filtered.length === 0}
-            onClick={() => {
-              const label = filterClass !== "all"
-                ? classes.find(c => c.id === filterClass)?.name || "kelas"
-                : filterSubject !== "all" ? filterSubject : "semua";
-              handleExportExcel(filtered, label);
-            }}
-          >
+          <Button variant="outline" size="sm" className="gap-2" disabled={totalCount === 0 || busy} onClick={handleExportAll}>
             <Download className="h-4 w-4" /> Export Excel
           </Button>
-          <Button
-            variant="outline" size="sm" className="gap-2"
-            disabled={filtered.filter(r => r.finished_at).length === 0}
-            onClick={() => {
-              const finishedResults = filtered.filter(r => r.finished_at);
-              // Fetch maxScore per exam for batch - use score as approx (will need questions data)
-              const fetchAndPrint = async () => {
-                // Get unique exam ids
-                const examIds = [...new Set(finishedResults.map(r => {
-                  // We need exam_id - fetch from sessions
-                  return r.id;
-                }))];
-                // Fetch questions weight per exam via sessions
-                const sessionIds = finishedResults.map(r => r.id);
-                const { data: sessions } = await supabase
-                  .from("exam_sessions")
-                  .select("id, exam_id")
-                  .in("id", sessionIds);
-                const examIdMap = new Map((sessions || []).map((s: any) => [s.id, s.exam_id]));
-                const uniqueExamIds = [...new Set([...(examIdMap.values())])];
-                
-                // Fetch total weight per exam
-                const weightMap = new Map<string, number>();
-                for (const examId of uniqueExamIds) {
-                  const { data: questions } = await supabase
-                    .from("questions")
-                    .select("point_weight")
-                    .eq("exam_id", examId);
-                  const total = (questions || []).reduce((sum: number, q: any) => sum + (q.point_weight || 1), 0);
-                  weightMap.set(examId, total);
-                }
-
-                const printData: ResultData[] = finishedResults.map(r => {
-                  const examId = examIdMap.get(r.id) || "";
-                  const maxScore = weightMap.get(examId) || r.total_questions || 0;
-                  const pct = maxScore > 0 ? Math.round(((r.score ?? r.correct_answers ?? 0) / maxScore) * 100) : null;
-                  return {
-                    student_name: r.student_name,
-                    class_name: r.class_name,
-                    exam_title: r.exam_title,
-                    exam_subject: r.exam_subject,
-                    score: r.score,
-                    correct_answers: r.correct_answers,
-                    total_questions: r.total_questions,
-                    started_at: r.started_at,
-                    finished_at: r.finished_at,
-                    maxScore,
-                    percentage: pct,
-                    nisn: r.nisn,
-                    exam_number: r.exam_number,
-                    essay_score: r.essay_score,
-                  };
-                });
-                setBatchPrintData(printData);
-                setBatchPrintOpen(true);
-              };
-              fetchAndPrint();
-            }}
-          >
-            <Printer className="h-4 w-4" /> Cetak Hasil ({filtered.filter(r => r.finished_at).length})
+          <Button variant="outline" size="sm" className="gap-2" disabled={finishedCount === 0 || busy} onClick={handleBatchPrint}>
+            <Printer className="h-4 w-4" /> Cetak Hasil ({finishedCount})
           </Button>
-          <Button
-            variant="destructive" size="sm" className="gap-2"
-            disabled={filtered.length === 0}
-            onClick={() => setDeleteAllConfirm(true)}
-          >
-            <Trash2 className="h-4 w-4" /> Hapus {filtered.length > 0 ? `(${filtered.length})` : "Semua"}
+          <Button variant="destructive" size="sm" className="gap-2" disabled={totalCount === 0 || busy} onClick={() => setDeleteAllConfirm(true)}>
+            <Trash2 className="h-4 w-4" /> Hapus {totalCount > 0 ? `(${totalCount})` : "Semua"}
           </Button>
         </div>
       </div>
 
       {/* Summary Cards */}
-      {finishedFiltered.length > 0 && (
+      {finishedCount > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
@@ -324,7 +470,7 @@ const StudentResults = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Selesai</p>
-              <p className="text-xl font-bold text-foreground">{finishedFiltered.length}</p>
+              <p className="text-xl font-bold text-foreground">{finishedCount}</p>
             </div>
           </div>
           <div className="rounded-xl border border-border bg-card p-4 flex items-center gap-3">
@@ -351,7 +497,7 @@ const StudentResults = () => {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Tidak Lulus</p>
-              <p className="text-xl font-bold text-destructive">{finishedFiltered.length - passCount}</p>
+              <p className="text-xl font-bold text-destructive">{finishedCount - passCount}</p>
             </div>
           </div>
         </div>
@@ -427,91 +573,127 @@ const StudentResults = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center text-sm text-muted-foreground">{filtered.length} hasil</div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {totalCount} hasil
+        </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {loadError ? (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-center">
+          <p className="text-sm text-destructive font-medium mb-3">{loadError}</p>
+          <Button variant="outline" size="sm" onClick={fetchPage}>Coba lagi</Button>
+        </div>
+      ) : loading && results.length === 0 ? (
+        <div className="rounded-xl border border-border p-12 text-center text-muted-foreground flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Memuat hasil ujian...
+        </div>
+      ) : results.length === 0 ? (
         <div className="rounded-xl border border-dashed border-border p-12 text-center text-muted-foreground">
           Belum ada hasil ujian.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Siswa</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Kelas</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ujian</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mapel</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">PG</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Essay</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Waktu</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r) => {
-                const pgScore = r.score ?? (r.correct_answers || 0);
-                const essay = r.essay_score ?? null;
-                // We don't have maxScore (question weights) in list view, use score as PG score
-                // For status, use simple calc: finalScore = (pg + essay) / (pg_max + 25) * 100
-                // Since we don't have pg_max here, show raw scores and status from detail
-                const hasEssay = essay !== null;
-                return (
-                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.class_name}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.exam_title}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{r.exam_subject}</td>
-                    <td className="px-4 py-3 text-center">
-                      {r.finished_at ? `${r.correct_answers ?? "-"}/${r.total_questions ?? "-"}` : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {hasEssay ? <span className="font-bold text-primary">{essay}/25</span> : <span className="text-muted-foreground text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center font-bold text-primary">
-                      {r.finished_at ? (r.score ?? "-") : "-"}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {r.finished_at ? (
-                        !r.exam_has_essay ? (
-                          <span className="text-xs text-success">Selesai</span>
-                        ) : hasEssay ? (
-                          <span className="text-xs text-muted-foreground">Lihat detail</span>
+        <>
+          <div className={`overflow-x-auto rounded-xl border border-border ${loading ? "opacity-60" : ""}`}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Siswa</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Kelas</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ujian</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mapel</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">PG</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Essay</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Waktu</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => {
+                  const essay = r.essay_score ?? null;
+                  const hasEssay = essay !== null;
+                  return (
+                    <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.class_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.exam_title}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{r.exam_subject}</td>
+                      <td className="px-4 py-3 text-center">
+                        {r.finished_at ? `${r.correct_answers ?? "-"}/${r.total_questions ?? "-"}` : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {hasEssay ? <span className="font-bold text-primary">{essay}/25</span> : <span className="text-muted-foreground text-xs">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center font-bold text-primary">
+                        {r.finished_at ? (r.score ?? "-") : "-"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {r.finished_at ? (
+                          !r.exam_has_essay ? (
+                            <span className="text-xs text-success">Selesai</span>
+                          ) : hasEssay ? (
+                            <span className="text-xs text-muted-foreground">Lihat detail</span>
+                          ) : (
+                            <span className="text-xs text-warning">Perlu essay</span>
+                          )
                         ) : (
-                          <span className="text-xs text-warning">Perlu essay</span>
-                        )
-                      ) : (
-                        <span className="text-xs text-warning">Berlangsung</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(r.started_at).toLocaleString("id-ID")}</td>
-                    <td className="px-4 py-3 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary"
-                          title="Lihat detail jawaban"
-                          onClick={() => navigate(`/admin/results/${r.id}`)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
-                          title="Hapus hasil ini"
-                          onClick={() => setDeleteTarget(r.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                          <span className="text-xs text-warning">Berlangsung</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(r.started_at).toLocaleString("id-ID")}</td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7 text-primary hover:text-primary"
+                            title="Lihat detail jawaban"
+                            onClick={() => navigate(`/admin/results/${r.id}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                            title="Hapus hasil ini"
+                            onClick={() => setDeleteTarget(r.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Menampilkan {rangeStart}–{rangeEnd} dari {totalCount} hasil
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="w-28">
+                <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="25">25 / hal</SelectItem>
+                    <SelectItem value="50">50 / hal</SelectItem>
+                    <SelectItem value="100">100 / hal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button variant="outline" size="sm" className="gap-1" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                <ChevronLeft className="h-4 w-4" /> Sebelumnya
+              </Button>
+              <span className="text-sm text-muted-foreground">Hal {page} / {totalPages}</span>
+              <Button variant="outline" size="sm" className="gap-1" disabled={page >= totalPages || loading} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                Berikutnya <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </>
       )}
 
       {/* Delete one confirmation */}
@@ -539,10 +721,10 @@ const StudentResults = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus {filtered.length} Hasil Ujian?
+              <AlertTriangle className="h-5 w-5 text-destructive" /> Hapus {totalCount} Hasil Ujian?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Semua hasil yang ditampilkan ({filtered.length} data) akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
+              Semua hasil yang sesuai filter aktif ({totalCount} data) akan dihapus permanen. Tindakan ini tidak bisa dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -559,8 +741,7 @@ const StudentResults = () => {
         onOpenChange={setBatchPrintOpen}
         results={batchPrintData}
         onEssayScoreChange={(idx, score) => {
-          // Update local batch data
-          setBatchPrintData(prev => {
+          setBatchPrintData((prev) => {
             const next = [...prev];
             next[idx] = { ...next[idx], essay_score: score };
             return next;
@@ -572,5 +753,3 @@ const StudentResults = () => {
 };
 
 export default StudentResults;
-
-
