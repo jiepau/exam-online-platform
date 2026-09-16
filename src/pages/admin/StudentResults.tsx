@@ -66,8 +66,13 @@ const StudentResults = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [exams, setExams] = useState<ExamOption[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
+  const [filterExam, setFilterExam] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
