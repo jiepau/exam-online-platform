@@ -345,11 +345,26 @@ const StudentResults = () => {
     try {
       const all = await fetchAllFiltered();
       const ids = all.map((r) => r.id);
-      for (const id of ids) {
-        await supabase.from("student_answers").delete().eq("session_id", id);
+      if (!ids.length) {
+        toast.info("Tidak ada hasil yang dihapus");
+        setDeleteAllConfirm(false);
+        return;
+      }
+      const { error: answersError } = await supabase
+        .from("student_answers")
+        .delete()
+        .in("session_id", ids);
+      if (answersError) {
+        toast.error("Gagal menghapus jawaban siswa — penghapusan dibatalkan");
+        await fetchPage();
+        return;
       }
       const { error } = await supabase.from("exam_sessions").delete().in("id", ids);
-      if (error) { toast.error("Gagal menghapus hasil"); return; }
+      if (error) {
+        toast.error("Penghapusan sesi sebagian gagal — silakan muat ulang dan periksa daftar");
+        await fetchPage();
+        return;
+      }
       toast.success(`${ids.length} hasil ujian berhasil dihapus`);
       setDeleteAllConfirm(false);
       setPage(1);
