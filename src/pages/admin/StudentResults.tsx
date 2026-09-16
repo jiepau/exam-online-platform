@@ -615,6 +615,43 @@ const StudentResults = () => {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-44">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger><SelectValue placeholder="Semua Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="finished">Selesai</SelectItem>
+              <SelectItem value="ongoing">Berlangsung</SelectItem>
+              <SelectItem value="need_essay">Perlu Essay</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            aria-label="Dari tanggal"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-[9.5rem]"
+          />
+          <span className="text-sm text-muted-foreground">s.d.</span>
+          <Input
+            type="date"
+            aria-label="Sampai tanggal"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-[9.5rem]"
+          />
+        </div>
+        <Input
+          placeholder="Cari nama siswa atau ujian..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-64"
+        />
+        {filtersActive && (
+          <Button variant="ghost" size="sm" onClick={handleResetFilters}>Reset Filter</Button>
+        )}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {totalCount} hasil
