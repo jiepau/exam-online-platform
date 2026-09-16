@@ -101,7 +101,22 @@ const StudentResults = () => {
   // reset ke halaman 1 saat filter/pencarian/page size berubah
   useEffect(() => {
     setPage(1);
-  }, [filterClass, filterSubject, debouncedSearch, pageSize]);
+  }, [filterClass, filterSubject, filterExam, filterStatus, dateFrom, dateTo, debouncedSearch, pageSize]);
+
+  const filtersActive =
+    filterClass !== "all" || filterSubject !== "all" || filterExam !== "all" ||
+    filterStatus !== "all" || !!dateFrom || !!dateTo || !!searchQuery;
+
+  const handleResetFilters = () => {
+    setFilterClass("all");
+    setFilterSubject("all");
+    setFilterExam("all");
+    setFilterStatus("all");
+    setDateFrom("");
+    setDateTo("");
+    setSearchQuery("");
+    setPage(1);
+  };
 
   const handleExportExcel = (data: SessionResult[], label: string) => {
     exportToExcel({
