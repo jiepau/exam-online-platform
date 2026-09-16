@@ -587,13 +587,16 @@ const StudentResults = () => {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <Input
-          placeholder="Cari nama siswa atau ujian..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-64"
-        />
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="w-full sm:w-56">
+          <Select value={filterExam} onValueChange={setFilterExam}>
+            <SelectTrigger><SelectValue placeholder="Semua Ujian" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Ujian</SelectItem>
+              {exams.map((e) => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="w-48">
           <Select value={filterClass} onValueChange={setFilterClass}>
             <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
