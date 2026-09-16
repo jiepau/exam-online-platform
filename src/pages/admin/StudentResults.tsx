@@ -36,6 +36,16 @@ interface ClassOption {
   name: string;
 }
 
+interface ExamOption {
+  id: string;
+  title: string;
+  subject: string;
+}
+
+// batas hari WIB (UTC+7) supaya hasil di tanggal batas tidak hilang
+const wibStart = (d: string) => `${d}T00:00:00+07:00`;
+const wibEnd = (d: string) => `${d}T23:59:59.999+07:00`;
+
 // Kolom yang benar-benar dipakai UI (hindari select("*"))
 const SESSION_COLUMNS =
   "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, exams!inner(title, subject, has_essay)";
@@ -56,8 +66,13 @@ const StudentResults = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [subjects, setSubjects] = useState<string[]>([]);
+  const [exams, setExams] = useState<ExamOption[]>([]);
   const [filterClass, setFilterClass] = useState("all");
   const [filterSubject, setFilterSubject] = useState("all");
+  const [filterExam, setFilterExam] = useState("all");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -86,7 +101,22 @@ const StudentResults = () => {
   // reset ke halaman 1 saat filter/pencarian/page size berubah
   useEffect(() => {
     setPage(1);
-  }, [filterClass, filterSubject, debouncedSearch, pageSize]);
+  }, [filterClass, filterSubject, filterExam, filterStatus, dateFrom, dateTo, debouncedSearch, pageSize]);
+
+  const filtersActive =
+    filterClass !== "all" || filterSubject !== "all" || filterExam !== "all" ||
+    filterStatus !== "all" || !!dateFrom || !!dateTo || !!searchQuery;
+
+  const handleResetFilters = () => {
+    setFilterClass("all");
+    setFilterSubject("all");
+    setFilterExam("all");
+    setFilterStatus("all");
+    setDateFrom("");
+    setDateTo("");
+    setSearchQuery("");
+    setPage(1);
+  };
 
   const handleExportExcel = (data: SessionResult[], label: string) => {
     exportToExcel({
@@ -120,12 +150,13 @@ const StudentResults = () => {
   const loadMasterData = useCallback(async () => {
     const [{ data: classData }, { data: examData }, { data: profileData }] = await Promise.all([
       supabase.from("classes").select("id, name").order("sort_order"),
-      supabase.from("exams").select("subject"),
+      supabase.from("exams").select("id, title, subject").order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, class_id"),
     ]);
     setClasses(classData || []);
     classMapRef.current = new Map((classData || []).map((c) => [c.id, c.name]));
     studentClassRef.current = new Map((profileData || []).map((p: any) => [p.user_id, p.class_id ?? null]));
+    setExams((examData || []).map((e: any) => ({ id: e.id, title: e.title, subject: e.subject })));
     setSubjects([...new Set((examData || []).map((e: any) => e.subject).filter(Boolean))].sort());
   }, []);
 
@@ -164,11 +195,19 @@ const StudentResults = () => {
     (query: any, ctx: { studentIds: string[] | null; orExpr: string | null }) => {
       let q = query;
       if (ctx.studentIds) q = q.in("student_id", ctx.studentIds);
+      if (filterExam !== "all") q = q.eq("exam_id", filterExam);
       if (filterSubject !== "all") q = q.eq("exams.subject", filterSubject);
+      if (filterStatus === "ongoing") q = q.is("finished_at", null);
+      if (filterStatus === "finished") q = q.not("finished_at", "is", null);
+      if (filterStatus === "need_essay") {
+        q = q.not("finished_at", "is", null).is("essay_score", null).eq("exams.has_essay", true);
+      }
+      if (dateFrom) q = q.gte("started_at", wibStart(dateFrom));
+      if (dateTo) q = q.lte("started_at", wibEnd(dateTo));
       if (ctx.orExpr) q = q.or(ctx.orExpr);
       return q;
     },
-    [filterSubject]
+    [filterSubject, filterExam, filterStatus, dateFrom, dateTo]
   );
 
   const mapSessions = useCallback(async (sessions: any[]): Promise<SessionResult[]> => {
@@ -548,13 +587,16 @@ const StudentResults = () => {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 mb-4">
-        <Input
-          placeholder="Cari nama siswa atau ujian..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-64"
-        />
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <div className="w-full sm:w-56">
+          <Select value={filterExam} onValueChange={setFilterExam}>
+            <SelectTrigger><SelectValue placeholder="Semua Ujian" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Ujian</SelectItem>
+              {exams.map((e) => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="w-48">
           <Select value={filterClass} onValueChange={setFilterClass}>
             <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
@@ -573,6 +615,43 @@ const StudentResults = () => {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-44">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger><SelectValue placeholder="Semua Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Status</SelectItem>
+              <SelectItem value="finished">Selesai</SelectItem>
+              <SelectItem value="ongoing">Berlangsung</SelectItem>
+              <SelectItem value="need_essay">Perlu Essay</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            aria-label="Dari tanggal"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-[9.5rem]"
+          />
+          <span className="text-sm text-muted-foreground">s.d.</span>
+          <Input
+            type="date"
+            aria-label="Sampai tanggal"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-[9.5rem]"
+          />
+        </div>
+        <Input
+          placeholder="Cari nama siswa atau ujian..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full sm:w-64"
+        />
+        {filtersActive && (
+          <Button variant="ghost" size="sm" onClick={handleResetFilters}>Reset Filter</Button>
+        )}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {totalCount} hasil
