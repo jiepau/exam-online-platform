@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import ResultPrinter, { type ResultData } from "@/components/admin/ResultPrinter";
+import { calcFinalScore, KKM } from "@/lib/score";
 
 interface SessionResult {
   id: string;
@@ -29,6 +30,8 @@ interface SessionResult {
   exam_id?: string;
   essay_score?: number | null;
   exam_has_essay?: boolean;
+  /** total bobot soal (point_weight) ujian terkait */
+  max_score: number;
 }
 
 interface ClassOption {
@@ -52,13 +55,11 @@ const SESSION_COLUMNS =
 
 const MAX_BULK_ROWS = 5000;
 
-const calcScore = (r: SessionResult) =>
-  r.finished_at && r.total_questions ? (r.correct_answers || 0) : null;
-
-const calcPercentage = (r: SessionResult) =>
-  r.finished_at && r.total_questions
-    ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100)
-    : null;
+// nilai akhir 0-100 memakai satu sumber perhitungan (src/lib/score.ts)
+const finalOf = (
+  r: { finished_at: string | null; score: number | null; essay_score?: number | null; exam_has_essay?: boolean },
+  maxScore: number,
+) => (r.finished_at ? calcFinalScore(r.score ?? 0, maxScore, r.essay_score ?? null, r.exam_has_essay ?? false) : null);
 
 const StudentResults = () => {
   const navigate = useNavigate();
@@ -86,11 +87,24 @@ const StudentResults = () => {
   const [batchPrintData, setBatchPrintData] = useState<ResultData[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [statsRows, setStatsRows] = useState<
-    { finished_at: string | null; correct_answers: number | null; total_questions: number | null; student_id: string; subject: string }[]
+    {
+      finished_at: string | null;
+      score: number | null;
+      correct_answers: number | null;
+      total_questions: number | null;
+      student_id: string;
+      subject: string;
+      essay_score: number | null;
+      exam_has_essay: boolean;
+      max_score: number;
+    }[]
   >([]);
 
   const classMapRef = useRef<Map<string, string>>(new Map());
   const studentClassRef = useRef<Map<string, string | null>>(new Map());
+  const examWeightRef = useRef<Map<string, number>>(new Map());
+  const examEssayRef = useRef<Map<string, boolean>>(new Map());
+  const [masterReady, setMasterReady] = useState(false);
 
   // debounce pencarian 300ms
   useEffect(() => {
@@ -134,30 +148,38 @@ const StudentResults = () => {
         { header: "Waktu Mulai", key: "waktu", width: 22 },
       ],
       rows: data.map((r) => {
-        const score = calcScore(r);
-        const pct = calcPercentage(r);
+        const res = finalOf(r, r.max_score);
         return {
           nama: r.student_name, kelas: r.class_name, ujian: r.exam_title, mapel: r.exam_subject,
-          benar: r.correct_answers ?? 0, total: r.total_questions ?? 0, nilai: score ?? "-",
-          status: r.finished_at ? ((pct ?? 0) >= 70 ? "Lulus" : "Tidak Lulus") : "Berlangsung",
+          benar: r.correct_answers ?? 0, total: r.total_questions ?? 0,
+          nilai: res ? res.finalScore : "-",
+          status: !r.finished_at ? "Berlangsung" : res!.passed ? "Lulus" : "Tidak Lulus",
           waktu: new Date(r.started_at).toLocaleString("id-ID"),
         };
       }),
     });
   };
 
-  // ---- master data (kelas, mapel, peta kelas siswa) ----
+  // ---- master data (kelas, mapel, peta kelas siswa, bobot soal per ujian) ----
   const loadMasterData = useCallback(async () => {
-    const [{ data: classData }, { data: examData }, { data: profileData }] = await Promise.all([
+    const [{ data: classData }, { data: examData }, { data: profileData }, { data: weightData }] = await Promise.all([
       supabase.from("classes").select("id, name").order("sort_order"),
-      supabase.from("exams").select("id, title, subject").order("created_at", { ascending: false }),
+      supabase.from("exams").select("id, title, subject, has_essay").order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, class_id"),
+      supabase.from("questions").select("exam_id, point_weight").range(0, 19999),
     ]);
     setClasses(classData || []);
     classMapRef.current = new Map((classData || []).map((c) => [c.id, c.name]));
     studentClassRef.current = new Map((profileData || []).map((p: any) => [p.user_id, p.class_id ?? null]));
     setExams((examData || []).map((e: any) => ({ id: e.id, title: e.title, subject: e.subject })));
     setSubjects([...new Set((examData || []).map((e: any) => e.subject).filter(Boolean))].sort());
+    examEssayRef.current = new Map((examData || []).map((e: any) => [e.id, !!e.has_essay]));
+    const wMap = new Map<string, number>();
+    (weightData || []).forEach((q: any) => {
+      wMap.set(q.exam_id, (wMap.get(q.exam_id) || 0) + (q.point_weight || 1));
+    });
+    examWeightRef.current = wMap;
+    setMasterReady(true);
   }, []);
 
   // ---- resolusi filter jadi kondisi query database ----
@@ -240,12 +262,14 @@ const StudentResults = () => {
         exam_id: s.exam_id,
         essay_score: s.essay_score ?? null,
         exam_has_essay: s.exams?.has_essay ?? false,
+        max_score: examWeightRef.current.get(s.exam_id) || s.total_questions || 0,
       };
     });
   }, []);
 
   // ---- ambil satu halaman + statistik sesuai filter ----
   const fetchPage = useCallback(async () => {
+    if (!masterReady) return; // butuh bobot soal & penanda essay untuk hitung nilai akhir
     setLoading(true);
     setLoadError(null);
     try {
@@ -271,7 +295,7 @@ const StudentResults = () => {
       const statsQuery = applyFilters(
         supabase
           .from("exam_sessions")
-          .select("finished_at, correct_answers, total_questions, student_id, exams!inner(subject)"),
+          .select("finished_at, score, correct_answers, total_questions, student_id, exam_id, essay_score, exams!inner(subject, has_essay)"),
         ctx
       ).range(0, MAX_BULK_ROWS - 1);
 
@@ -288,10 +312,14 @@ const StudentResults = () => {
       setStatsRows(
         (stats || []).map((s: any) => ({
           finished_at: s.finished_at,
+          score: s.score,
           correct_answers: s.correct_answers,
           total_questions: s.total_questions,
           student_id: s.student_id,
           subject: s.exams?.subject || "Unknown",
+          essay_score: s.essay_score ?? null,
+          exam_has_essay: s.exams?.has_essay ?? false,
+          max_score: examWeightRef.current.get(s.exam_id) || s.total_questions || 0,
         }))
       );
     } catch (e: any) {
@@ -299,7 +327,7 @@ const StudentResults = () => {
     } finally {
       setLoading(false);
     }
-  }, [applyFilters, mapSessions, page, pageSize, resolveFilters]);
+  }, [applyFilters, mapSessions, page, pageSize, resolveFilters, masterReady]);
 
   useEffect(() => {
     loadMasterData();
@@ -412,6 +440,7 @@ const StudentResults = () => {
         const maxScore = weightMap.get(r.exam_id || "") || r.total_questions || 0;
         const pct = maxScore > 0 ? Math.round(((r.score ?? r.correct_answers ?? 0) / maxScore) * 100) : null;
         return {
+          has_essay: r.exam_has_essay ?? false,
           student_name: r.student_name,
           class_name: r.class_name,
           exam_title: r.exam_title,
@@ -442,15 +471,16 @@ const StudentResults = () => {
     () => statsRows.filter((r) => r.finished_at && r.total_questions),
     [statsRows]
   );
-  const pctOf = (r: { correct_answers: number | null; total_questions: number | null }) =>
-    r.total_questions ? Math.round(((r.correct_answers || 0) / r.total_questions) * 100) : 0;
+  // nilai akhir resmi (memakai point_weight & essay opsional)
+  const pctOf = (r: (typeof statsRows)[number]) =>
+    calcFinalScore(r.score ?? 0, r.max_score, r.essay_score, r.exam_has_essay).finalScore;
 
   const finishedCount = finishedStats.length;
   const avgScore = useMemo(() => {
     if (!finishedCount) return null;
     return Math.round(finishedStats.reduce((sum, r) => sum + pctOf(r), 0) / finishedCount);
   }, [finishedStats, finishedCount]);
-  const passCount = finishedStats.filter((r) => pctOf(r) >= 70).length;
+  const passCount = finishedStats.filter((r) => pctOf(r) >= KKM).length;
   const passRate = finishedCount ? Math.round((passCount / finishedCount) * 100) : null;
 
   const byClass = useMemo(() => {
@@ -571,9 +601,9 @@ const StudentResults = () => {
                   <div key={c.name} className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground w-24 truncate" title={c.name}>{c.name}</span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${c.avg}%`, backgroundColor: c.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${c.avg}%`, backgroundColor: c.avg >= KKM ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
                     </div>
-                    <span className={`text-sm font-bold w-8 text-right ${c.avg >= 70 ? "text-success" : "text-destructive"}`}>{c.avg}</span>
+                    <span className={`text-sm font-bold w-8 text-right ${c.avg >= KKM ? "text-success" : "text-destructive"}`}>{c.avg}</span>
                     <span className="text-xs text-muted-foreground w-14 text-right">({c.count} siswa)</span>
                   </div>
                 ))}
@@ -590,9 +620,9 @@ const StudentResults = () => {
                   <div key={s.name} className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground w-24 truncate" title={s.name}>{s.name}</span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className="h-full rounded-full transition-all" style={{ width: `${s.avg}%`, backgroundColor: s.avg >= 70 ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
+                      <div className="h-full rounded-full transition-all" style={{ width: `${s.avg}%`, backgroundColor: s.avg >= KKM ? "hsl(var(--success))" : "hsl(var(--destructive))" }} />
                     </div>
-                    <span className={`text-sm font-bold w-8 text-right ${s.avg >= 70 ? "text-success" : "text-destructive"}`}>{s.avg}</span>
+                    <span className={`text-sm font-bold w-8 text-right ${s.avg >= KKM ? "text-success" : "text-destructive"}`}>{s.avg}</span>
                     <span className="text-xs text-muted-foreground w-14 text-right">({s.count} ujian)</span>
                   </div>
                 ))}
@@ -699,7 +729,7 @@ const StudentResults = () => {
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mapel</th>
                   <th className="px-4 py-3 text-center font-medium text-muted-foreground">PG</th>
                   <th className="px-4 py-3 text-center font-medium text-muted-foreground">Essay</th>
-                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai</th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">Nilai Akhir</th>
                   <th className="px-4 py-3 text-center font-medium text-muted-foreground">Status</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Waktu</th>
                   <th className="px-4 py-3 text-center font-medium text-muted-foreground">Aksi</th>
@@ -709,6 +739,7 @@ const StudentResults = () => {
                 {results.map((r) => {
                   const essay = r.essay_score ?? null;
                   const hasEssay = essay !== null;
+                  const res = finalOf(r, r.max_score);
                   return (
                     <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 font-medium text-foreground">{r.student_name}</td>
@@ -721,20 +752,18 @@ const StudentResults = () => {
                       <td className="px-4 py-3 text-center">
                         {hasEssay ? <span className="font-bold text-primary">{essay}/25</span> : <span className="text-muted-foreground text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-center font-bold text-primary">
-                        {r.finished_at ? (r.score ?? "-") : "-"}
+                      <td className={`px-4 py-3 text-center font-bold ${res ? (res.passed ? "text-success" : "text-destructive") : "text-muted-foreground"}`}>
+                        {res ? res.finalScore : "-"}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {r.finished_at ? (
-                          !r.exam_has_essay ? (
-                            <span className="text-xs text-success">Selesai</span>
-                          ) : hasEssay ? (
-                            <span className="text-xs text-muted-foreground">Lihat detail</span>
-                          ) : (
-                            <span className="text-xs text-warning">Perlu essay</span>
-                          )
-                        ) : (
+                        {!res ? (
                           <span className="text-xs text-warning">Berlangsung</span>
+                        ) : res.essayPending ? (
+                          <span className="text-xs text-warning">Perlu essay</span>
+                        ) : (
+                          <span className={`text-xs font-medium ${res.passed ? "text-success" : "text-destructive"}`}>
+                            {res.passed ? "Lulus" : "Tidak Lulus"}
+                          </span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(r.started_at).toLocaleString("id-ID")}</td>

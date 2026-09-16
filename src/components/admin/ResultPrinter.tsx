@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Printer } from "lucide-react";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import logoMadrasah from "@/assets/logo-madrasah.png";
+import { calcFinalScore, ESSAY_MAX, KKM } from "@/lib/score";
 
 export interface ResultData {
   student_name: string;
@@ -21,10 +22,9 @@ export interface ResultData {
   nisn?: string;
   exam_number?: string;
   essay_score?: number | null;
+  /** true bila ujian memang memiliki essay */
+  has_essay?: boolean;
 }
-
-const ESSAY_MAX = 25; // 5 soal × 5 poin
-const KKM = 75;
 
 interface ResultPrinterProps {
   open: boolean;
@@ -88,15 +88,8 @@ const PRINT_CSS = `
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;
 
-/** Calculate combined final score scaled to 100 */
-export const calcFinalScore = (pgScore: number, pgMax: number, essayScore: number | null | undefined) => {
-  const essay = essayScore ?? 0;
-  const totalRaw = pgScore + essay;
-  const totalMax = pgMax + ESSAY_MAX;
-  if (totalMax === 0) return { finalScore: 0, totalRaw, totalMax, passed: false };
-  const finalScore = Math.round((totalRaw / totalMax) * 100);
-  return { finalScore, totalRaw, totalMax, passed: finalScore >= KKM };
-};
+// Perhitungan nilai memakai satu sumber: src/lib/score.ts
+export { calcFinalScore, ESSAY_MAX, KKM } from "@/lib/score";
 
 const ResultPrinter = ({ open, onOpenChange, results, onEssayScoreChange }: ResultPrinterProps) => {
   const printRef = useRef<HTMLDivElement>(null);
@@ -136,9 +129,10 @@ const ResultPrinter = ({ open, onOpenChange, results, onEssayScoreChange }: Resu
   const today = formatDate(new Date().toISOString());
 
   const renderPage = (r: ResultData, idx: number) => {
-    const essayVal = localEssayScores[idx] ?? 0;
+    const hasEssay = r.has_essay ?? false;
+    const essayVal = hasEssay ? localEssayScores[idx] ?? 0 : 0;
     const pgScore = r.score ?? 0;
-    const { finalScore, totalRaw, totalMax, passed } = calcFinalScore(pgScore, r.maxScore, localEssayScores[idx]);
+    const { finalScore, totalRaw, totalMax, passed } = calcFinalScore(pgScore, r.maxScore, localEssayScores[idx], hasEssay);
 
     return (
       <div className="page" key={idx}>
@@ -187,7 +181,7 @@ const ResultPrinter = ({ open, onOpenChange, results, onEssayScoreChange }: Resu
               <td style={{ fontSize: "13pt", fontWeight: "bold" }}>{r.correct_answers ?? "-"}/{r.total_questions ?? "-"}</td>
               <td style={{ fontSize: "13pt", fontWeight: "bold" }}>{pgScore}</td>
               <td>{r.maxScore}</td>
-              <td style={{ fontSize: "13pt", fontWeight: "bold" }}>{essayVal}</td>
+              <td style={{ fontSize: "13pt", fontWeight: "bold" }}>{hasEssay ? essayVal : "—"}</td>
               <td style={{ fontSize: "13pt", fontWeight: "bold" }}>{totalRaw}/{totalMax}</td>
               <td className={`score-big ${passed ? "score-pass" : "score-fail"}`}>{finalScore}</td>
             </tr></tbody>
@@ -205,7 +199,9 @@ const ResultPrinter = ({ open, onOpenChange, results, onEssayScoreChange }: Resu
           <p><strong>Keterangan:</strong></p>
           <p>• Kriteria Ketuntasan Minimal (KKM): {KKM}</p>
           <p>• Skor PG (Pilihan Ganda) dihitung otomatis oleh sistem, skor Essay diinput manual oleh guru</p>
-          <p>• Nilai akhir = (Skor PG + Skor Essay) / {ESSAY_MAX + r.maxScore} × 100</p>
+          <p>
+            • Nilai akhir = {hasEssay ? "(Skor PG + Skor Essay)" : "Skor PG"} / {hasEssay ? ESSAY_MAX + r.maxScore : r.maxScore} × 100
+          </p>
           <p>• Dokumen ini dicetak melalui sistem ujian daring ExON</p>
         </div>
 
@@ -246,17 +242,22 @@ const ResultPrinter = ({ open, onOpenChange, results, onEssayScoreChange }: Resu
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto">
               {results.map((r, i) => {
                 const essay = localEssayScores[i];
-                const { finalScore, passed } = calcFinalScore(r.score ?? 0, r.maxScore, essay);
+                const hasEssay = r.has_essay ?? false;
+                const { finalScore, passed } = calcFinalScore(r.score ?? 0, r.maxScore, essay, hasEssay);
                 return (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     <span className="truncate flex-1 text-muted-foreground" title={r.student_name}>{r.student_name}</span>
-                    <Input
-                      type="number" min={0} max={ESSAY_MAX}
-                      value={essay ?? ""}
-                      onChange={(e) => handleEssayChange(i, e.target.value)}
-                      placeholder="0"
-                      className="w-16 h-7 text-center text-xs"
-                    />
+                    {hasEssay ? (
+                      <Input
+                        type="number" min={0} max={ESSAY_MAX}
+                        value={essay ?? ""}
+                        onChange={(e) => handleEssayChange(i, e.target.value)}
+                        placeholder="0"
+                        className="w-16 h-7 text-center text-xs"
+                      />
+                    ) : (
+                      <span className="w-16 text-center text-xs text-muted-foreground">tanpa essay</span>
+                    )}
                     <span className={`w-8 text-right font-bold text-xs ${passed ? "text-success" : "text-destructive"}`}>
                       {finalScore}
                     </span>

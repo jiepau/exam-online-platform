@@ -6,7 +6,8 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import MathText from "@/components/exam/MathText";
-import ResultPrinter, { calcFinalScore } from "@/components/admin/ResultPrinter";
+import ResultPrinter from "@/components/admin/ResultPrinter";
+import { calcFinalScore, ESSAY_MAX } from "@/lib/score";
 import { toast } from "sonner";
 
 interface AnswerDetail {
@@ -32,6 +33,7 @@ interface SessionInfo {
   total_questions: number | null;
   started_at: string;
   finished_at: string | null;
+  has_essay: boolean;
 }
 
 const LABELS = ["A", "B", "C", "D", "E", "F"];
@@ -53,7 +55,7 @@ const StudentResultDetail = () => {
       setLoading(true);
       const { data: sess } = await supabase
         .from("exam_sessions")
-        .select("*, exams(title, subject)")
+        .select("*, exams(title, subject, has_essay)")
         .eq("id", sessionId)
         .single();
       if (!sess) { setLoading(false); return; }
@@ -78,6 +80,7 @@ const StudentResultDetail = () => {
         total_questions: sess.total_questions,
         started_at: sess.started_at,
         finished_at: sess.finished_at,
+        has_essay: (sess as any).exams?.has_essay ?? false,
       });
       setEssayScore((sess as any).essay_score ?? null);
 
@@ -156,7 +159,8 @@ const StudentResultDetail = () => {
   const earnedScore = session?.score ?? null;
   const pgPercentage = session?.finished_at && maxScore > 0
     ? Math.round(((earnedScore || 0) / maxScore) * 100) : null;
-  const { finalScore, passed } = calcFinalScore(earnedScore || 0, maxScore, essayScore);
+  const examHasEssay = session?.has_essay ?? false;
+  const { finalScore, passed, essayPending } = calcFinalScore(earnedScore || 0, maxScore, essayScore, examHasEssay);
   const hasCustomWeights = answers.some((q) => q.point_weight > 1);
 
   const handleSaveEssay = async () => {
@@ -350,9 +354,11 @@ const StudentResultDetail = () => {
           </Button>
           {session && session.finished_at && (
             <div className="flex gap-2 ml-auto">
-              <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveEssay} disabled={essaySaving}>
-                <Save className="h-4 w-4" /> {essaySaving ? "Menyimpan..." : "Simpan Essay"}
-              </Button>
+              {examHasEssay && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={handleSaveEssay} disabled={essaySaving}>
+                  <Save className="h-4 w-4" /> {essaySaving ? "Menyimpan..." : "Simpan Essay"}
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="gap-2" onClick={() => setPrintOpen(true)}>
                 <Printer className="h-4 w-4" /> Cetak Hasil
               </Button>
@@ -391,24 +397,32 @@ const StudentResultDetail = () => {
                       {earnedScore ?? "-"}<span className="text-sm font-normal text-muted-foreground">/{maxScore}</span>
                     </p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-xs text-muted-foreground">Essay</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Input
-                        type="number" min={0} max={25}
-                        value={essayScore ?? ""}
-                        onChange={(e) => setEssayScore(e.target.value === "" ? null : Math.min(25, Math.max(0, parseInt(e.target.value) || 0)))}
-                        className="w-14 h-8 text-center text-sm font-bold"
-                        placeholder="0"
-                      />
-                      <span className="text-sm text-muted-foreground">/25</span>
+                  {examHasEssay ? (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Essay</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Input
+                          type="number" min={0} max={ESSAY_MAX}
+                          value={essayScore ?? ""}
+                          onChange={(e) => setEssayScore(e.target.value === "" ? null : Math.min(ESSAY_MAX, Math.max(0, parseInt(e.target.value) || 0)))}
+                          className="w-14 h-8 text-center text-sm font-bold"
+                          placeholder="0"
+                        />
+                        <span className="text-sm text-muted-foreground">/{ESSAY_MAX}</span>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground">Essay</p>
+                      <p className="text-sm text-muted-foreground mt-1.5">Tanpa essay</p>
+                    </div>
+                  )}
                   <div className="text-center">
                     <p className="text-xs text-muted-foreground">Nilai Akhir</p>
                     <p className={`text-3xl font-bold ${passed ? "text-success" : "text-destructive"}`}>
                       {finalScore}
                     </p>
+                    {essayPending && <p className="text-[10px] text-warning">essay belum dinilai</p>}
                   </div>
                   {session.finished_at && (
                     <span className={`rounded-full px-3 py-1 text-sm font-semibold ${passed ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}`}>
@@ -452,6 +466,7 @@ const StudentResultDetail = () => {
             nisn: studentExtra.nisn,
             exam_number: studentExtra.exam_number,
             essay_score: essayScore,
+            has_essay: examHasEssay,
           }]}
         />
       )}
