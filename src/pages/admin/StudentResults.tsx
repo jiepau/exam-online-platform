@@ -150,12 +150,13 @@ const StudentResults = () => {
   const loadMasterData = useCallback(async () => {
     const [{ data: classData }, { data: examData }, { data: profileData }] = await Promise.all([
       supabase.from("classes").select("id, name").order("sort_order"),
-      supabase.from("exams").select("subject"),
+      supabase.from("exams").select("id, title, subject").order("created_at", { ascending: false }),
       supabase.from("profiles").select("user_id, class_id"),
     ]);
     setClasses(classData || []);
     classMapRef.current = new Map((classData || []).map((c) => [c.id, c.name]));
     studentClassRef.current = new Map((profileData || []).map((p: any) => [p.user_id, p.class_id ?? null]));
+    setExams((examData || []).map((e: any) => ({ id: e.id, title: e.title, subject: e.subject })));
     setSubjects([...new Set((examData || []).map((e: any) => e.subject).filter(Boolean))].sort());
   }, []);
 
