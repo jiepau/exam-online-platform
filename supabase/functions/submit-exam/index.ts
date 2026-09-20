@@ -157,12 +157,26 @@ Deno.serve(async (req) => {
 
       if (updateError) throw new Error("Gagal update sesi");
     } else {
+      // Snapshot kelas siswa saat ujian (hanya untuk histori laporan; boleh null)
+      let snapshotClassId: string | null = null;
+      try {
+        const { data: profileRow } = await adminClient
+          .from("profiles")
+          .select("class_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        snapshotClassId = profileRow?.class_id ?? null;
+      } catch (_) {
+        snapshotClassId = null;
+      }
+
       // Buat sesi baru
       const { data: newSession, error: insertError } = await adminClient
         .from("exam_sessions")
         .insert({
           student_id: user.id,
           exam_id,
+          class_id: snapshotClassId,
           score: finalScore,
           correct_answers: correctCount,
           total_questions: totalQuestions,

@@ -51,7 +51,7 @@ const wibEnd = (d: string) => `${d}T23:59:59.999+07:00`;
 
 // Kolom yang benar-benar dipakai UI (hindari select("*"))
 const SESSION_COLUMNS =
-  "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, exams!inner(title, subject, has_essay)";
+  "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, class_id, exams!inner(title, subject, has_essay)";
 
 const MAX_BULK_ROWS = 5000;
 
@@ -97,6 +97,8 @@ const StudentResults = () => {
       essay_score: number | null;
       exam_has_essay: boolean;
       max_score: number;
+      /** snapshot kelas saat ujian (null untuk sesi lama) */
+      class_id: string | null;
     }[]
   >([]);
 
@@ -210,13 +212,20 @@ const StudentResults = () => {
       orExpr = parts.join(",");
     }
 
-    return { studentIds, orExpr, empty: studentIds !== null && studentIds.length === 0 };
+    // filter kelas tidak lagi otomatis "kosong": sesi bisa cocok lewat snapshot kelas
+    return { studentIds, orExpr, empty: false };
   }, [filterClass, debouncedSearch]);
 
   const applyFilters = useCallback(
     (query: any, ctx: { studentIds: string[] | null; orExpr: string | null }) => {
       let q = query;
-      if (ctx.studentIds) q = q.in("student_id", ctx.studentIds);
+      if (filterClass !== "all") {
+        // snapshot kelas bila ada, kalau kosong pakai kelas siswa saat ini
+        const ids = ctx.studentIds ?? [];
+        const parts = [`class_id.eq.${filterClass}`];
+        if (ids.length) parts.push(`and(class_id.is.null,student_id.in.(${ids.join(",")}))`);
+        q = q.or(parts.join(","));
+      }
       if (filterExam !== "all") q = q.eq("exam_id", filterExam);
       if (filterSubject !== "all") q = q.eq("exams.subject", filterSubject);
       if (filterStatus === "ongoing") q = q.is("finished_at", null);
@@ -229,7 +238,7 @@ const StudentResults = () => {
       if (ctx.orExpr) q = q.or(ctx.orExpr);
       return q;
     },
-    [filterSubject, filterExam, filterStatus, dateFrom, dateTo]
+    [filterClass, filterSubject, filterExam, filterStatus, dateFrom, dateTo]
   );
 
   const mapSessions = useCallback(async (sessions: any[]): Promise<SessionResult[]> => {
@@ -244,6 +253,8 @@ const StudentResults = () => {
 
     return sessions.map((s) => {
       const profile: any = profileMap.get(s.student_id);
+      // kelas histori: snapshot sesi bila ada, fallback ke kelas siswa saat ini
+      const effClassId: string | null = s.class_id ?? profile?.class_id ?? null;
       return {
         id: s.id,
         score: s.score,
@@ -254,8 +265,8 @@ const StudentResults = () => {
         exam_title: s.exams?.title || "Unknown",
         exam_subject: s.exams?.subject || "Unknown",
         student_name: profile?.full_name || "Unknown",
-        class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
-        class_id: profile?.class_id || null,
+        class_name: effClassId ? classMap.get(effClassId) || "-" : "-",
+        class_id: effClassId,
         nisn: profile?.nisn || undefined,
         exam_number: profile?.exam_number || undefined,
         student_id: s.student_id,
@@ -295,7 +306,7 @@ const StudentResults = () => {
       const statsQuery = applyFilters(
         supabase
           .from("exam_sessions")
-          .select("finished_at, score, correct_answers, total_questions, student_id, exam_id, essay_score, exams!inner(subject, has_essay)"),
+          .select("finished_at, score, correct_answers, total_questions, student_id, exam_id, class_id, essay_score, exams!inner(subject, has_essay)"),
         ctx
       ).range(0, MAX_BULK_ROWS - 1);
 
@@ -320,6 +331,7 @@ const StudentResults = () => {
           essay_score: s.essay_score ?? null,
           exam_has_essay: s.exams?.has_essay ?? false,
           max_score: examWeightRef.current.get(s.exam_id) || s.total_questions || 0,
+          class_id: s.class_id ?? null,
         }))
       );
     } catch (e: any) {
@@ -487,7 +499,8 @@ const StudentResults = () => {
     if (filterClass !== "all") return [];
     const map = new Map<string, { name: string; scores: number[] }>();
     finishedStats.forEach((r) => {
-      const classId = studentClassRef.current.get(r.student_id) || null;
+      // rekap kelas: snapshot sesi bila ada, fallback kelas siswa saat ini
+      const classId = r.class_id ?? studentClassRef.current.get(r.student_id) ?? null;
       const key = classId || "__none__";
       if (!map.has(key)) map.set(key, { name: classId ? classMapRef.current.get(classId) || "-" : "-", scores: [] });
       map.get(key)!.scores.push(pctOf(r));
