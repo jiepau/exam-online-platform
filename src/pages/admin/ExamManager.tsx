@@ -1320,6 +1320,21 @@ TIPE SOAL OTOMATIS:
                   {exam.start_time && exam.end_time && ` • ${exam.start_time.slice(0,5)} – ${exam.end_time.slice(0,5)}`}
                 </p>
               )}
+              <div className="mt-1.5">
+                {(examClassMap[exam.id]?.length ?? 0) === 0 ? (
+                  <Badge variant="outline" className="text-xs">Target: Semua Kelas</Badge>
+                ) : (
+                  <Badge
+                    variant="secondary"
+                    className="text-xs"
+                    title={examClassMap[exam.id].map(classNameOf).join(", ")}
+                  >
+                    Target: {examClassMap[exam.id].length <= 3
+                      ? examClassMap[exam.id].map(classNameOf).join(", ")
+                      : `${examClassMap[exam.id].length} Kelas`}
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => handleToggleActive(exam)} title={exam.is_active ? "Nonaktifkan" : "Aktifkan"}>
