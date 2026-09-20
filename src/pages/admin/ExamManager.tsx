@@ -158,14 +158,22 @@ const ExamManager = () => {
       end_time: endTime || null,
       has_essay: hasEssay,
     };
-    if (editingExam) {
-      const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
-      if (error) toast.error(error.message);
-      else { toast.success("Ujian berhasil diperbarui"); setShowCreate(false); resetForm(); fetchExams(); }
-    } else {
-      const { error } = await supabase.from("exams").insert({ ...payload, created_by: user?.id });
-      if (error) toast.error(error.message);
-      else { toast.success("Ujian berhasil dibuat"); setShowCreate(false); resetForm(); fetchExams(); }
+    try {
+      let examId = editingExam?.id;
+      if (editingExam) {
+        const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("exams").insert({ ...payload, created_by: user?.id }).select("id").single();
+        if (error) throw error;
+        examId = data?.id;
+      }
+      if (examId) await syncExamClasses(examId, selectedClassIds);
+      toast.success(editingExam ? "Ujian berhasil diperbarui" : "Ujian berhasil dibuat");
+      setShowCreate(false); resetForm(); fetchExams(); fetchExamClasses();
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal menyimpan ujian");
     }
     setLoading(false);
   };
