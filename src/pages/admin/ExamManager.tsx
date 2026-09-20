@@ -700,12 +700,12 @@ const ExamManager = () => {
       } else if (ext === "docx") {
         const arrayBuffer = await file.arrayBuffer();
         const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
-        const normalized = normalizeNestedListDocx(htmlResult.value);
-        let imported = normalized ? parseWordText(normalized) : [];
+        let imported = parseFlexible(htmlToFlexLines(htmlResult.value));
         if (imported.length === 0) imported = parseDocxHtml(htmlResult.value);
         if (imported.length === 0) {
           const result = await mammoth.extractRawText({ arrayBuffer });
-          imported = parseWordText(result.value);
+          imported = parseFlexible(textToFlexLines(result.value));
+          if (imported.length === 0) imported = parseWordText(result.value);
         }
         if (imported.length === 0) { toast.error("Tidak ada soal yang terdeteksi."); return; }
         setQuestions((prev) => [...prev, ...imported]);
