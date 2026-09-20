@@ -172,6 +172,42 @@ export type Database = {
           },
         ]
       }
+      exam_classes: {
+        Row: {
+          class_id: string
+          created_at: string
+          exam_id: string
+          id: string
+        }
+        Insert: {
+          class_id: string
+          created_at?: string
+          exam_id: string
+          id?: string
+        }
+        Update: {
+          class_id?: string
+          created_at?: string
+          exam_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_classes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "exam_classes_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exam_sessions: {
         Row: {
           class_id: string | null

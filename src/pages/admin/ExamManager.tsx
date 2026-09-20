@@ -46,6 +46,13 @@ interface Exam {
   has_essay: boolean;
 }
 
+interface ClassRow {
+  id: string;
+  name: string;
+  grade_level: string | null;
+  is_active: boolean;
+}
+
 interface QuestionForm {
   question_text: string;
   options: string[];
@@ -73,6 +80,9 @@ const ExamManager = () => {
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [examClassMap, setExamClassMap] = useState<Record<string, string[]>>({});
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -81,12 +91,52 @@ const ExamManager = () => {
     if (data) setExams(data as Exam[]);
   };
 
-  useEffect(() => { fetchExams(); }, []);
+  const fetchClasses = async () => {
+    const { data } = await supabase
+      .from("classes").select("id, name, grade_level, is_active").order("sort_order");
+    if (data) setClasses(data as ClassRow[]);
+  };
+
+  const fetchExamClasses = async () => {
+    const { data } = await supabase.from("exam_classes").select("exam_id, class_id");
+    const map: Record<string, string[]> = {};
+    (data || []).forEach((r: any) => {
+      (map[r.exam_id] ||= []).push(r.class_id);
+    });
+    setExamClassMap(map);
+  };
+
+  useEffect(() => { fetchExams(); fetchClasses(); fetchExamClasses(); }, []);
+
+  const classNameOf = (id: string) => classes.find((c) => c.id === id)?.name || "Kelas";
+
+  const toggleClass = (id: string) =>
+    setSelectedClassIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const syncExamClasses = async (examId: string, selected: string[]) => {
+    const { data: existing, error: readErr } = await supabase
+      .from("exam_classes").select("id, class_id").eq("exam_id", examId);
+    if (readErr) throw readErr;
+    const current = (existing || []) as { id: string; class_id: string }[];
+    const toRemove = current.filter((r) => !selected.includes(r.class_id)).map((r) => r.id);
+    const currentIds = current.map((r) => r.class_id);
+    const toAdd = selected.filter((cid) => !currentIds.includes(cid));
+    if (toRemove.length) {
+      const { error } = await supabase.from("exam_classes").delete().in("id", toRemove);
+      if (error) throw error;
+    }
+    if (toAdd.length) {
+      const { error } = await supabase
+        .from("exam_classes").insert(toAdd.map((cid) => ({ exam_id: examId, class_id: cid })));
+      if (error) throw error;
+    }
+  };
 
   const resetForm = () => {
     setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
     setScheduledDate(""); setStartTime(""); setEndTime("");
     setHasEssay(false);
+    setSelectedClassIds([]);
     setEditingExam(null);
   };
 
@@ -108,14 +158,22 @@ const ExamManager = () => {
       end_time: endTime || null,
       has_essay: hasEssay,
     };
-    if (editingExam) {
-      const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
-      if (error) toast.error(error.message);
-      else { toast.success("Ujian berhasil diperbarui"); setShowCreate(false); resetForm(); fetchExams(); }
-    } else {
-      const { error } = await supabase.from("exams").insert({ ...payload, created_by: user?.id });
-      if (error) toast.error(error.message);
-      else { toast.success("Ujian berhasil dibuat"); setShowCreate(false); resetForm(); fetchExams(); }
+    try {
+      let examId = editingExam?.id;
+      if (editingExam) {
+        const { error } = await supabase.from("exams").update(payload).eq("id", editingExam.id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from("exams").insert({ ...payload, created_by: user?.id }).select("id").single();
+        if (error) throw error;
+        examId = data?.id;
+      }
+      if (examId) await syncExamClasses(examId, selectedClassIds);
+      toast.success(editingExam ? "Ujian berhasil diperbarui" : "Ujian berhasil dibuat");
+      setShowCreate(false); resetForm(); fetchExams(); fetchExamClasses();
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal menyimpan ujian");
     }
     setLoading(false);
   };
@@ -189,6 +247,7 @@ const ExamManager = () => {
     setStartTime(exam.start_time ? exam.start_time.slice(0, 5) : "");
     setEndTime(exam.end_time ? exam.end_time.slice(0, 5) : "");
     setHasEssay(exam.has_essay ?? false);
+    setSelectedClassIds(examClassMap[exam.id] || []);
     setShowCreate(true);
   };
 
@@ -1085,7 +1144,7 @@ TIPE SOAL OTOMATIS:
 
       {/* Create/Edit Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingExam ? "Edit Ujian" : "Buat Ujian Baru"}</DialogTitle>
           </DialogHeader>
@@ -1148,6 +1207,38 @@ TIPE SOAL OTOMATIS:
                 </p>
               </div>
               <Switch checked={hasEssay} onCheckedChange={setHasEssay} />
+            </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium">Target Kelas <span className="text-muted-foreground font-normal">(opsional)</span></label>
+                {selectedClassIds.length > 0 && (
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedClassIds([])}>
+                    Kosongkan
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {classes
+                  .filter((c) => c.is_active || selectedClassIds.includes(c.id))
+                  .map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm cursor-pointer">
+                      <Checkbox checked={selectedClassIds.includes(c.id)} onCheckedChange={() => toggleClass(c.id)} />
+                      <span className="truncate">
+                        {c.name}
+                        {!c.is_active && <span className="text-[10px] text-muted-foreground"> (nonaktif)</span>}
+                      </span>
+                    </label>
+                  ))}
+                {classes.length === 0 && (
+                  <p className="text-xs text-muted-foreground col-span-full">Belum ada kelas terdaftar.</p>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {selectedClassIds.length === 0
+                  ? "Belum ada kelas dipilih — ujian ini ditandai untuk semua kelas."
+                  : `Terpilih ${selectedClassIds.length} kelas: ${selectedClassIds.map(classNameOf).join(", ")}.`}{" "}
+                Pilihan ini baru sebagai penanda; belum membatasi akses siswa.
+              </p>
             </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}
@@ -1229,6 +1320,21 @@ TIPE SOAL OTOMATIS:
                   {exam.start_time && exam.end_time && ` • ${exam.start_time.slice(0,5)} – ${exam.end_time.slice(0,5)}`}
                 </p>
               )}
+              <div className="mt-1.5">
+                {(examClassMap[exam.id]?.length ?? 0) === 0 ? (
+                  <Badge variant="outline" className="text-xs">Target: Semua Kelas</Badge>
+                ) : (
+                  <Badge
+                    variant="secondary"
+                    className="text-xs"
+                    title={examClassMap[exam.id].map(classNameOf).join(", ")}
+                  >
+                    Target: {examClassMap[exam.id].length <= 3
+                      ? examClassMap[exam.id].map(classNameOf).join(", ")
+                      : `${examClassMap[exam.id].length} Kelas`}
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="sm" onClick={() => handleToggleActive(exam)} title={exam.is_active ? "Nonaktifkan" : "Aktifkan"}>
