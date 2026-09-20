@@ -73,6 +73,9 @@ const ExamManager = () => {
   const [questionsDialog, setQuestionsDialog] = useState<string | null>(null);
   const [questions, setQuestions] = useState<(QuestionForm & { id?: string })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [classes, setClasses] = useState<ClassRow[]>([]);
+  const [examClassMap, setExamClassMap] = useState<Record<string, string[]>>({});
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -81,12 +84,52 @@ const ExamManager = () => {
     if (data) setExams(data as Exam[]);
   };
 
-  useEffect(() => { fetchExams(); }, []);
+  const fetchClasses = async () => {
+    const { data } = await supabase
+      .from("classes").select("id, name, grade_level, is_active").order("sort_order");
+    if (data) setClasses(data as ClassRow[]);
+  };
+
+  const fetchExamClasses = async () => {
+    const { data } = await supabase.from("exam_classes").select("exam_id, class_id");
+    const map: Record<string, string[]> = {};
+    (data || []).forEach((r: any) => {
+      (map[r.exam_id] ||= []).push(r.class_id);
+    });
+    setExamClassMap(map);
+  };
+
+  useEffect(() => { fetchExams(); fetchClasses(); fetchExamClasses(); }, []);
+
+  const classNameOf = (id: string) => classes.find((c) => c.id === id)?.name || "Kelas";
+
+  const toggleClass = (id: string) =>
+    setSelectedClassIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const syncExamClasses = async (examId: string, selected: string[]) => {
+    const { data: existing, error: readErr } = await supabase
+      .from("exam_classes").select("id, class_id").eq("exam_id", examId);
+    if (readErr) throw readErr;
+    const current = (existing || []) as { id: string; class_id: string }[];
+    const toRemove = current.filter((r) => !selected.includes(r.class_id)).map((r) => r.id);
+    const currentIds = current.map((r) => r.class_id);
+    const toAdd = selected.filter((cid) => !currentIds.includes(cid));
+    if (toRemove.length) {
+      const { error } = await supabase.from("exam_classes").delete().in("id", toRemove);
+      if (error) throw error;
+    }
+    if (toAdd.length) {
+      const { error } = await supabase
+        .from("exam_classes").insert(toAdd.map((cid) => ({ exam_id: examId, class_id: cid })));
+      if (error) throw error;
+    }
+  };
 
   const resetForm = () => {
     setTitle(""); setSubject(""); setDuration(60); setToken(""); setAcademicYear("");
     setScheduledDate(""); setStartTime(""); setEndTime("");
     setHasEssay(false);
+    setSelectedClassIds([]);
     setEditingExam(null);
   };
 
