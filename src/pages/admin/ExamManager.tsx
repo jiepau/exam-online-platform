@@ -1144,7 +1144,7 @@ TIPE SOAL OTOMATIS:
 
       {/* Create/Edit Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingExam ? "Edit Ujian" : "Buat Ujian Baru"}</DialogTitle>
           </DialogHeader>
