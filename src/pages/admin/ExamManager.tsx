@@ -1208,6 +1208,38 @@ TIPE SOAL OTOMATIS:
               </div>
               <Switch checked={hasEssay} onCheckedChange={setHasEssay} />
             </div>
+            <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium">Target Kelas <span className="text-muted-foreground font-normal">(opsional)</span></label>
+                {selectedClassIds.length > 0 && (
+                  <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedClassIds([])}>
+                    Kosongkan
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {classes
+                  .filter((c) => c.is_active || selectedClassIds.includes(c.id))
+                  .map((c) => (
+                    <label key={c.id} className="flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-sm cursor-pointer">
+                      <Checkbox checked={selectedClassIds.includes(c.id)} onCheckedChange={() => toggleClass(c.id)} />
+                      <span className="truncate">
+                        {c.name}
+                        {!c.is_active && <span className="text-[10px] text-muted-foreground"> (nonaktif)</span>}
+                      </span>
+                    </label>
+                  ))}
+                {classes.length === 0 && (
+                  <p className="text-xs text-muted-foreground col-span-full">Belum ada kelas terdaftar.</p>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {selectedClassIds.length === 0
+                  ? "Belum ada kelas dipilih — ujian ini ditandai untuk semua kelas."
+                  : `Terpilih ${selectedClassIds.length} kelas: ${selectedClassIds.map(classNameOf).join(", ")}.`}{" "}
+                Pilihan ini baru sebagai penanda; belum membatasi akses siswa.
+              </p>
+            </div>
             <Button type="submit" disabled={loading} className="w-full exam-gradient border-0">
               {loading ? "Menyimpan..." : "Simpan Ujian"}
             </Button>
