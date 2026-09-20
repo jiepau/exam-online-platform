@@ -46,6 +46,13 @@ interface Exam {
   has_essay: boolean;
 }
 
+interface ClassRow {
+  id: string;
+  name: string;
+  grade_level: string | null;
+  is_active: boolean;
+}
+
 interface QuestionForm {
   question_text: string;
   options: string[];
