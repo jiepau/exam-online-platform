@@ -174,6 +174,7 @@ export type Database = {
       }
       exam_sessions: {
         Row: {
+          class_id: string | null
           correct_answers: number | null
           created_at: string
           created_by: string | null
@@ -188,6 +189,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          class_id?: string | null
           correct_answers?: number | null
           created_at?: string
           created_by?: string | null
@@ -202,6 +204,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          class_id?: string | null
           correct_answers?: number | null
           created_at?: string
           created_by?: string | null
@@ -216,6 +219,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "exam_sessions_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "exam_sessions_exam_id_fkey"
             columns: ["exam_id"]
