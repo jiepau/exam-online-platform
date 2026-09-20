@@ -364,45 +364,202 @@ const ExamManager = () => {
     return questions;
   };
 
-  // Word auto-numbered lists: question = outer <li>, options = nested <li>
-  const normalizeNestedListDocx = (html: string): string => {
-    const doc = new DOMParser().parseFromString(html, "text/html");
-    const letters = "ABCDEFGH";
-    const lines: string[] = [];
-    let qNo = 0;
+  // ---- Parser fleksibel: mendukung penomoran otomatis Word, manual 1./1), dan A-D ----
+  type FlexLine = { text: string; depth: number; listed: boolean };
 
-    const directText = (li: Element) => {
-      let out = "";
-      li.childNodes.forEach((node) => {
-        if (node.nodeType === Node.TEXT_NODE) out += node.textContent || "";
+  const htmlToFlexLines = (html: string): FlexLine[] => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const out: FlexLine[] = [];
+
+    const ownText = (el: Element) => {
+      let s = "";
+      el.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) s += node.textContent || "";
         else if (node.nodeType === Node.ELEMENT_NODE) {
-          const el = node as Element;
-          const tag = el.tagName.toLowerCase();
-          if (tag === "ol" || tag === "ul") return;
-          if (tag === "br") out += " ";
-          else out += el.textContent || "";
+          const child = node as Element;
+          const tag = child.tagName.toLowerCase();
+          if (tag === "ol" || tag === "ul" || tag === "li" || tag === "p") return;
+          if (tag === "br") s += "\n";
+          else s += child.textContent || "";
         }
       });
-      return out.replace(/\s+/g, " ").trim();
+      return s;
     };
 
-    doc.querySelectorAll("li").forEach((li) => {
-      const nested = li.querySelector(":scope > ol, :scope > ul");
-      if (!nested) return;
-      const qText = directText(li);
-      if (!qText) return;
-      const opts = Array.from(nested.children)
-        .filter((c) => c.tagName.toLowerCase() === "li")
-        .map((c) => directText(c))
-        .filter(Boolean);
-      if (opts.length < 2) return;
-      qNo++;
-      lines.push(`${qNo}. ${qText}`);
-      opts.forEach((opt, i) => lines.push(`${letters[i] || "Z"}. ${opt}`));
-      lines.push("");
-    });
+    const depthOf = (el: Element) => {
+      let d = 0;
+      let p = el.parentElement;
+      while (p) {
+        const tag = p.tagName.toLowerCase();
+        if (tag === "ol" || tag === "ul") d++;
+        p = p.parentElement;
+      }
+      return d;
+    };
 
-    return lines.join("\n");
+    const walk = (el: Element) => {
+      Array.from(el.children).forEach((child) => {
+        const tag = child.tagName.toLowerCase();
+        if (tag === "li" || tag === "p" || tag === "div" || tag === "h1" || tag === "h2" || tag === "h3") {
+          const raw = ownText(child);
+          raw.split("\n").forEach((part) => {
+            const text = part.replace(/[\t ]+/g, " ").trim();
+            if (text) out.push({ text, depth: depthOf(child), listed: tag === "li" });
+          });
+        }
+        walk(child);
+      });
+    };
+
+    walk(doc.body);
+    return out;
+  };
+
+  const textToFlexLines = (text: string): FlexLine[] =>
+    text
+      .split("\n")
+      .map((l) => l.replace(/[\t ]+/g, " ").trim())
+      .filter(Boolean)
+      .map((t) => ({ text: t, depth: 0, listed: false }));
+
+  const parseFlexible = (lines: FlexLine[]): QuestionForm[] => {
+    type Opt = { text: string; star: boolean };
+    type Q = { text: string; opts: Opt[]; depth: number; answerHint?: string; shortAnswer?: string };
+    const qs: Q[] = [];
+
+    const LETTER_OPT = /^\(?([A-Ha-h])\s*[.)\]]\s*(.+)$/;
+    const NUM_MARK = /^\(?(\d{1,2})\s*[.)\]]\s*(.*)$/;
+    const Q_PREFIX = /^(soal|no|nomor)\s*\.?\s*\d{1,2}\s*[.):]?\s*/i;
+    const ANSWER_LINE = /^(jawab(an)?|kunci)\s*[:=]\s*(.+)$/i;
+    const endsOpen = (s: string) => /(\.{2,}|…|:|\?)\s*$/.test(s);
+
+    const mkOpt = (raw: string): Opt => {
+      const star = /\*/.test(raw);
+      return { text: raw.replace(/\*/g, "").replace(/\s+/g, " ").trim(), star };
+    };
+
+    for (const line of lines) {
+      const cur = qs[qs.length - 1];
+      const ans = line.text.match(ANSWER_LINE);
+      if (ans && cur) {
+        const val = ans[3].trim();
+        if (cur.opts.length > 0) cur.answerHint = val;
+        else cur.shortAnswer = val;
+        continue;
+      }
+
+      const letter = line.text.match(LETTER_OPT);
+      const num = line.text.match(NUM_MARK);
+      const nestedOption = line.listed && cur !== undefined && line.depth > cur.depth;
+
+      // OPTION detection
+      if (cur && cur.opts.length < 8) {
+        if (letter) {
+          const expectedIdx = cur.opts.length;
+          const idx = letter[1].toUpperCase().charCodeAt(0) - 65;
+          if (idx <= expectedIdx + 1) {
+            cur.opts.push(mkOpt(letter[2]));
+            continue;
+          }
+        }
+        if (nestedOption) {
+          cur.opts.push(mkOpt(num ? num[2] || line.text : line.text));
+          continue;
+        }
+        if (num && !line.listed) {
+          const n = parseInt(num[1], 10);
+          // numbered line that continues an option list (1..4 restarting under a question)
+          if (cur.opts.length > 0 && n === cur.opts.length + 1 && n <= 6) {
+            cur.opts.push(mkOpt(num[2]));
+            continue;
+          }
+          if (cur.opts.length === 0 && n === 1 && endsOpen(cur.text)) {
+            cur.opts.push(mkOpt(num[2]));
+            continue;
+          }
+        }
+        // unmarked continuation line that is likely an option
+        if (!letter && !num && !line.listed && cur.opts.length > 0 && cur.opts.length < 4) {
+          cur.opts.push(mkOpt(line.text));
+          continue;
+        }
+      }
+
+      // NEW QUESTION
+      let text = line.text.replace(Q_PREFIX, "");
+      const numQ = text.match(NUM_MARK);
+      if (numQ && !line.listed) text = numQ[2];
+      text = text.replace(/\s+/g, " ").trim();
+      if (!text) continue;
+
+      // unmarked paragraph right after a question with no options yet = continuation of the text
+      if (cur && cur.opts.length === 0 && !line.listed && !numQ && !endsOpen(cur.text) && line.depth === cur.depth) {
+        cur.text = `${cur.text} ${text}`.trim();
+        continue;
+      }
+
+      qs.push({ text, opts: [], depth: line.depth });
+    }
+
+    const resolveHint = (q: Q): number | null => {
+      if (!q.answerHint) return null;
+      const h = q.answerHint.trim();
+      const l = h.match(/^\(?([A-Ha-h])\)?[.)]?$/);
+      if (l) return l[1].toUpperCase().charCodeAt(0) - 65;
+      const n = h.match(/^\(?(\d{1,2})\)?[.)]?$/);
+      if (n) return parseInt(n[1], 10) - 1;
+      const found = q.opts.findIndex((o) => o.text.toLowerCase() === h.toLowerCase());
+      return found >= 0 ? found : null;
+    };
+
+    return qs
+      .filter((q) => q.text && (q.opts.length >= 2 || q.shortAnswer))
+      .map<QuestionForm>((q) => {
+        if (q.shortAnswer && q.opts.length === 0) {
+          return {
+            question_text: q.text,
+            options: [],
+            correct_answer: 0,
+            question_type: "short_answer",
+            correct_answer_data: { answer: q.shortAnswer, aliases: [] },
+            point_weight: 1,
+          };
+        }
+        const starIdx = q.opts.map((o, i) => (o.star ? i : -1)).filter((i) => i >= 0);
+        const hint = resolveHint(q);
+        const optTexts = q.opts.map((o) => o.text);
+        while (optTexts.length < 4) optTexts.push("");
+
+        const isTF = q.opts.length === 2 &&
+          /^(benar|betul|true|b)$/i.test(q.opts[0].text) &&
+          /^(salah|false|s)$/i.test(q.opts[1].text);
+        if (isTF) {
+          return {
+            question_text: q.text,
+            options: ["Benar", "Salah"],
+            correct_answer: starIdx[0] ?? hint ?? 0,
+            question_type: "true_false",
+            point_weight: 1,
+          };
+        }
+        if (starIdx.length > 1) {
+          return {
+            question_text: q.text,
+            options: optTexts,
+            correct_answer: 0,
+            question_type: "multiple_select",
+            correct_answer_data: starIdx,
+            point_weight: 1,
+          };
+        }
+        return {
+          question_text: q.text,
+          options: optTexts,
+          correct_answer: starIdx[0] ?? hint ?? 0,
+          question_type: "multiple_choice",
+          point_weight: 1,
+        };
+      });
   };
 
   const parseDocxHtml = (html: string): QuestionForm[] => {
@@ -543,12 +700,12 @@ const ExamManager = () => {
       } else if (ext === "docx") {
         const arrayBuffer = await file.arrayBuffer();
         const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
-        const normalized = normalizeNestedListDocx(htmlResult.value);
-        let imported = normalized ? parseWordText(normalized) : [];
+        let imported = parseFlexible(htmlToFlexLines(htmlResult.value));
         if (imported.length === 0) imported = parseDocxHtml(htmlResult.value);
         if (imported.length === 0) {
           const result = await mammoth.extractRawText({ arrayBuffer });
-          imported = parseWordText(result.value);
+          imported = parseFlexible(textToFlexLines(result.value));
+          if (imported.length === 0) imported = parseWordText(result.value);
         }
         if (imported.length === 0) { toast.error("Tidak ada soal yang terdeteksi."); return; }
         setQuestions((prev) => [...prev, ...imported]);
