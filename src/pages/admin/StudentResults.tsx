@@ -238,7 +238,7 @@ const StudentResults = () => {
       if (ctx.orExpr) q = q.or(ctx.orExpr);
       return q;
     },
-    [filterSubject, filterExam, filterStatus, dateFrom, dateTo]
+    [filterClass, filterSubject, filterExam, filterStatus, dateFrom, dateTo]
   );
 
   const mapSessions = useCallback(async (sessions: any[]): Promise<SessionResult[]> => {
@@ -253,6 +253,8 @@ const StudentResults = () => {
 
     return sessions.map((s) => {
       const profile: any = profileMap.get(s.student_id);
+      // kelas histori: snapshot sesi bila ada, fallback ke kelas siswa saat ini
+      const effClassId: string | null = s.class_id ?? profile?.class_id ?? null;
       return {
         id: s.id,
         score: s.score,
@@ -263,8 +265,8 @@ const StudentResults = () => {
         exam_title: s.exams?.title || "Unknown",
         exam_subject: s.exams?.subject || "Unknown",
         student_name: profile?.full_name || "Unknown",
-        class_name: profile?.class_id ? classMap.get(profile.class_id) || "-" : "-",
-        class_id: profile?.class_id || null,
+        class_name: effClassId ? classMap.get(effClassId) || "-" : "-",
+        class_id: effClassId,
         nisn: profile?.nisn || undefined,
         exam_number: profile?.exam_number || undefined,
         student_id: s.student_id,
