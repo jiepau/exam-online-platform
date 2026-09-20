@@ -51,7 +51,7 @@ const wibEnd = (d: string) => `${d}T23:59:59.999+07:00`;
 
 // Kolom yang benar-benar dipakai UI (hindari select("*"))
 const SESSION_COLUMNS =
-  "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, exams!inner(title, subject, has_essay)";
+  "id, score, total_questions, correct_answers, started_at, finished_at, essay_score, student_id, exam_id, class_id, exams!inner(title, subject, has_essay)";
 
 const MAX_BULK_ROWS = 5000;
 

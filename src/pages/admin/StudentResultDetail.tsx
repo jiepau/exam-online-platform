@@ -64,9 +64,11 @@ const StudentResultDetail = () => {
         .from("profiles").select("full_name, class_id, nisn, exam_number").eq("user_id", sess.student_id).single();
       setStudentExtra({ nisn: profile?.nisn || undefined, exam_number: profile?.exam_number || undefined });
 
+      // kelas histori: pakai snapshot pada sesi bila ada, fallback ke kelas siswa saat ini
+      const effectiveClassId = (sess as any).class_id ?? profile?.class_id ?? null;
       let className = "-";
-      if (profile?.class_id) {
-        const { data: cls } = await supabase.from("classes").select("name").eq("id", profile.class_id).single();
+      if (effectiveClassId) {
+        const { data: cls } = await supabase.from("classes").select("name").eq("id", effectiveClassId).maybeSingle();
         if (cls) className = cls.name;
       }
 
