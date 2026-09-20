@@ -306,7 +306,7 @@ const StudentResults = () => {
       const statsQuery = applyFilters(
         supabase
           .from("exam_sessions")
-          .select("finished_at, score, correct_answers, total_questions, student_id, exam_id, essay_score, exams!inner(subject, has_essay)"),
+          .select("finished_at, score, correct_answers, total_questions, student_id, exam_id, class_id, essay_score, exams!inner(subject, has_essay)"),
         ctx
       ).range(0, MAX_BULK_ROWS - 1);
 
@@ -331,6 +331,7 @@ const StudentResults = () => {
           essay_score: s.essay_score ?? null,
           exam_has_essay: s.exams?.has_essay ?? false,
           max_score: examWeightRef.current.get(s.exam_id) || s.total_questions || 0,
+          class_id: s.class_id ?? null,
         }))
       );
     } catch (e: any) {
@@ -498,7 +499,8 @@ const StudentResults = () => {
     if (filterClass !== "all") return [];
     const map = new Map<string, { name: string; scores: number[] }>();
     finishedStats.forEach((r) => {
-      const classId = studentClassRef.current.get(r.student_id) || null;
+      // rekap kelas: snapshot sesi bila ada, fallback kelas siswa saat ini
+      const classId = r.class_id ?? studentClassRef.current.get(r.student_id) ?? null;
       const key = classId || "__none__";
       if (!map.has(key)) map.set(key, { name: classId ? classMapRef.current.get(classId) || "-" : "-", scores: [] });
       map.get(key)!.scores.push(pctOf(r));
