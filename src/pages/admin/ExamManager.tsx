@@ -364,6 +364,47 @@ const ExamManager = () => {
     return questions;
   };
 
+  // Word auto-numbered lists: question = outer <li>, options = nested <li>
+  const normalizeNestedListDocx = (html: string): string => {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const letters = "ABCDEFGH";
+    const lines: string[] = [];
+    let qNo = 0;
+
+    const directText = (li: Element) => {
+      let out = "";
+      li.childNodes.forEach((node) => {
+        if (node.nodeType === Node.TEXT_NODE) out += node.textContent || "";
+        else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as Element;
+          const tag = el.tagName.toLowerCase();
+          if (tag === "ol" || tag === "ul") return;
+          if (tag === "br") out += " ";
+          else out += el.textContent || "";
+        }
+      });
+      return out.replace(/\s+/g, " ").trim();
+    };
+
+    doc.querySelectorAll("li").forEach((li) => {
+      const nested = li.querySelector(":scope > ol, :scope > ul");
+      if (!nested) return;
+      const qText = directText(li);
+      if (!qText) return;
+      const opts = Array.from(nested.children)
+        .filter((c) => c.tagName.toLowerCase() === "li")
+        .map((c) => directText(c))
+        .filter(Boolean);
+      if (opts.length < 2) return;
+      qNo++;
+      lines.push(`${qNo}. ${qText}`);
+      opts.forEach((opt, i) => lines.push(`${letters[i] || "Z"}. ${opt}`));
+      lines.push("");
+    });
+
+    return lines.join("\n");
+  };
+
   const parseDocxHtml = (html: string): QuestionForm[] => {
     const blocks: string[] = [];
     const blockRegex = /<(li|p)\b[^>]*>([\s\S]*?)<\/\1>/gi;
@@ -502,7 +543,9 @@ const ExamManager = () => {
       } else if (ext === "docx") {
         const arrayBuffer = await file.arrayBuffer();
         const htmlResult = await mammoth.convertToHtml({ arrayBuffer });
-        let imported = parseDocxHtml(htmlResult.value);
+        const normalized = normalizeNestedListDocx(htmlResult.value);
+        let imported = normalized ? parseWordText(normalized) : [];
+        if (imported.length === 0) imported = parseDocxHtml(htmlResult.value);
         if (imported.length === 0) {
           const result = await mammoth.extractRawText({ arrayBuffer });
           imported = parseWordText(result.value);
