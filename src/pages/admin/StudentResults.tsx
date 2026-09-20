@@ -97,6 +97,8 @@ const StudentResults = () => {
       essay_score: number | null;
       exam_has_essay: boolean;
       max_score: number;
+      /** snapshot kelas saat ujian (null untuk sesi lama) */
+      class_id: string | null;
     }[]
   >([]);
 
@@ -210,13 +212,20 @@ const StudentResults = () => {
       orExpr = parts.join(",");
     }
 
-    return { studentIds, orExpr, empty: studentIds !== null && studentIds.length === 0 };
+    // filter kelas tidak lagi otomatis "kosong": sesi bisa cocok lewat snapshot kelas
+    return { studentIds, orExpr, empty: false };
   }, [filterClass, debouncedSearch]);
 
   const applyFilters = useCallback(
     (query: any, ctx: { studentIds: string[] | null; orExpr: string | null }) => {
       let q = query;
-      if (ctx.studentIds) q = q.in("student_id", ctx.studentIds);
+      if (filterClass !== "all") {
+        // snapshot kelas bila ada, kalau kosong pakai kelas siswa saat ini
+        const ids = ctx.studentIds ?? [];
+        const parts = [`class_id.eq.${filterClass}`];
+        if (ids.length) parts.push(`and(class_id.is.null,student_id.in.(${ids.join(",")}))`);
+        q = q.or(parts.join(","));
+      }
       if (filterExam !== "all") q = q.eq("exam_id", filterExam);
       if (filterSubject !== "all") q = q.eq("exams.subject", filterSubject);
       if (filterStatus === "ongoing") q = q.is("finished_at", null);
