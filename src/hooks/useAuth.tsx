@@ -58,6 +58,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    // Tracks the user whose role/profile has already been loaded so that
+    // TOKEN_REFRESHED / USER_UPDATED for the SAME user don't re-trigger the
+    // global loading state (which would unmount StaffRoute pages and lose
+    // unsaved form input). Runs in the auth callback, so a ref is required
+    // instead of React state.
+    let loadedUserId: string | null = null;
 
     // onAuthStateChange fires INITIAL_SESSION on subscribe — it is the single
     // source of truth for session init, so no separate loadSession() call.
@@ -67,15 +73,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(currentUser);
 
       if (currentUser) {
+        // Same user, session already loaded (e.g. background TOKEN_REFRESHED
+        // or USER_UPDATED): update the session silently in the background.
+        // Never flip the global loading flag here — that would remount
+        // protected pages and wipe unsaved form state.
+        if (loadedUserId === currentUser.id) return;
+
         setLoading(true);
         setRoleError(null);
         // Defer to avoid Supabase auth callback deadlocks
         setTimeout(async () => {
           if (!mounted) return;
           await fetchUserData(currentUser.id);
-          if (mounted) setLoading(false);
+          if (mounted) {
+            loadedUserId = currentUser.id;
+            setLoading(false);
+          }
         }, 0);
       } else {
+        loadedUserId = null;
         setRole(null);
         setProfile(null);
         setRoleError(null);
