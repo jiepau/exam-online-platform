@@ -37,7 +37,9 @@ const queryClient = new QueryClient();
 
 const StaffRoute = ({ permission, children }: { permission: Permission; children: React.ReactNode }) => {
   const { user, role, loading } = useAuth();
-  if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Memuat...</div>;
+  // Once user + role are known, a transient auth reload (e.g. token refresh)
+  // must NOT unmount the page — keep children mounted so form state survives.
+  if (loading && !(user && isStaff(role))) return <div className="flex min-h-screen items-center justify-center text-muted-foreground">Memuat...</div>;
   if (!user || !isStaff(role)) return <Navigate to="/auth" replace />;
   if (!can(role, permission)) return <Navigate to="/admin" replace />;
   return <>{children}</>;
