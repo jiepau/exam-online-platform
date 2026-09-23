@@ -156,11 +156,11 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
           <div className="flex min-w-0 items-center">{renderPrimaryItems(mobilePrimaryPaths)}</div>
           {renderMoreMenu(mobilePrimaryPaths)}
         </div>
-        <div className="mx-auto hidden max-w-7xl items-center justify-between px-4 sm:flex md:hidden sm:px-6">
+        <div className="mx-auto hidden max-w-7xl items-center justify-between px-4 sm:flex lg:hidden sm:px-6">
           <div className="flex min-w-0 items-center">{renderPrimaryItems(tabletPrimaryPaths)}</div>
           {renderMoreMenu(tabletPrimaryPaths)}
         </div>
-        <div className="mx-auto hidden max-w-7xl items-center justify-between px-6 md:flex">
+        <div className="mx-auto hidden max-w-7xl items-center justify-between px-6 lg:flex">
           <div className="flex min-w-0 items-center">{renderPrimaryItems(desktopPrimaryPaths)}</div>
           {renderMoreMenu(desktopPrimaryPaths)}
         </div>
