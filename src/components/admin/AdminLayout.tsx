@@ -1,11 +1,17 @@
 import { ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
-import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, Menu, GraduationCap, Library, School } from "lucide-react";
+import { LayoutDashboard, FileText, Users, LogOut, UserPlus, UserCog, Settings, ShieldAlert, Eye, Sparkles, Cloud, FlaskConical, ChevronDown, GraduationCap, Library, School } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import WhatsNewDialog from "@/components/admin/WhatsNewDialog";
 import AppFooter from "@/components/AppFooter";
 import logoMadrasah from "@/assets/logo-madrasah.png";
@@ -28,6 +34,18 @@ const navItems: { path: string; label: string; icon: typeof LayoutDashboard; per
   { path: "/admin/settings", label: "Pengaturan", icon: Settings, permission: "settings" },
 ];
 
+const desktopPrimaryPaths = [
+  "/admin",
+  "/admin/monitor",
+  "/admin/exams",
+  "/admin/bank",
+  "/admin/results",
+  "/admin/students",
+];
+
+const tabletPrimaryPaths = ["/admin", "/admin/monitor"];
+const mobilePrimaryPaths = ["/admin"];
+
 const AdminLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,6 +54,68 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
   const [whatsNewOpen, setWhatsNewOpen] = useState(false);
 
   const visibleItems = navItems.filter((item) => can(role, item.permission));
+
+  const renderPrimaryItems = (primaryPaths: string[]) =>
+    visibleItems
+      .filter((item) => primaryPaths.includes(item.path))
+      .map(({ path, label, icon: Icon }) => {
+        const isActive = location.pathname === path;
+        return (
+          <Button
+            key={path}
+            type="button"
+            variant="ghost"
+            onClick={() => navigate(path)}
+            className={`h-11 shrink-0 rounded-none border-b-2 px-3 text-sm font-medium sm:px-4 ${
+              isActive
+                ? "border-primary text-primary hover:text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon className="h-4 w-4" /> {label}
+          </Button>
+        );
+      });
+
+  const renderMoreMenu = (primaryPaths: string[]) => {
+    const moreItems = visibleItems.filter((item) => !primaryPaths.includes(item.path));
+    const hasActiveItem = moreItems.some((item) => location.pathname === item.path);
+
+    if (moreItems.length === 0) return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            className={`h-11 shrink-0 rounded-none border-b-2 px-3 text-sm font-medium sm:px-4 ${
+              hasActiveItem
+                ? "border-primary text-primary hover:text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Lainnya <ChevronDown className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {moreItems.map(({ path, label, icon: Icon }) => {
+            const isActive = location.pathname === path;
+            return (
+              <DropdownMenuItem
+                key={path}
+                onSelect={() => navigate(path)}
+                className={`gap-2 ${isActive ? "bg-accent font-semibold text-accent-foreground" : ""}`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -72,23 +152,17 @@ const AdminLayout = ({ children }: { children: ReactNode }) => {
       </header>
 
       <nav className="border-b border-border bg-card">
-        <div className="mx-auto flex max-w-7xl items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground sm:hidden">
-          <Menu className="h-4 w-4" /> Geser menu ke samping
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:hidden">
+          <div className="flex min-w-0 items-center">{renderPrimaryItems(mobilePrimaryPaths)}</div>
+          {renderMoreMenu(mobilePrimaryPaths)}
         </div>
-        <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4 sm:px-6">
-          {visibleItems.map(({ path, label, icon: Icon }) => (
-            <button
-              key={path}
-              onClick={() => navigate(path)}
-              className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-3 py-3 text-sm font-medium border-b-2 transition-colors sm:px-4 ${
-                location.pathname === path
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="h-4 w-4" /> {label}
-            </button>
-          ))}
+        <div className="mx-auto hidden max-w-7xl items-center justify-between px-4 sm:flex lg:hidden sm:px-6">
+          <div className="flex min-w-0 items-center">{renderPrimaryItems(tabletPrimaryPaths)}</div>
+          {renderMoreMenu(tabletPrimaryPaths)}
+        </div>
+        <div className="mx-auto hidden max-w-7xl items-center justify-between px-6 lg:flex">
+          <div className="flex min-w-0 items-center">{renderPrimaryItems(desktopPrimaryPaths)}</div>
+          {renderMoreMenu(desktopPrimaryPaths)}
         </div>
       </nav>
 
